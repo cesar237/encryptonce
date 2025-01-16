@@ -257,8 +257,7 @@ func (device *Device) RoutineDecryption(id int) {
 			binary.LittleEndian.PutUint64(nonce[0x4:0xc], elem.counter)
 
 			// if it is a ipv4 packet, its length > ipv4_header_length + encryption_overhead
-			if len(elem.packet) > 20 + elem.keypair.receive.Overhead()
-			{
+			if len(elem.packet) > 20 + elem.keypair.receive.Overhead() {
 				elem.packet, err = elem.keypair.receive.Open(
 					counter,
 					nonce[:],
