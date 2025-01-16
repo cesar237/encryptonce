@@ -238,6 +238,7 @@ func (device *Device) RoutineReceiveIncoming(maxBatchSize int, recv conn.Receive
 
 func (device *Device) RoutineDecryption(id int) {
 	var nonce [chacha20poly1305.NonceSize]byte
+	var InnerIPv4 [20]byte
 
 	defer device.log.Verbosef("Routine: decryption worker %d - stopped", id)
 	device.log.Verbosef("Routine: decryption worker %d - started", id)
@@ -246,18 +247,24 @@ func (device *Device) RoutineDecryption(id int) {
 		for _, elem := range elemsContainer.elems {
 			// split message into fields
 			counter := elem.packet[MessageTransportOffsetCounter:MessageTransportOffsetContent]
-			content := elem.packet[MessageTransportOffsetContent:]
+			encryptedInnerIPv4 := elem.packet[MessageTransportOffsetContent:MessageTransportOffsetContent+16+20]
+			content := elem.packet[MessageTransportOffsetContent+16+20:]
 
 			// decrypt and release to consumer
 			var err error
 			elem.counter = binary.LittleEndian.Uint64(counter)
 			// copy counter to nonce
 			binary.LittleEndian.PutUint64(nonce[0x4:0xc], elem.counter)
-			elem.packet, err = elem.keypair.receive.Open(
-				content[:0],
+			InnerIPv4, err = elem.keypair.receive.Open(
+				InnerIPv4[:0],
 				nonce[:],
-				content,
+				encryptedInnerIPv4[:],
 				nil,
+			)
+			elem.packet = append(
+				elem.packet[:MessageTransportOffsetContent],
+				InnerIPv4,
+				content...
 			)
 			if err != nil {
 				elem.packet = nil

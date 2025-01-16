@@ -225,7 +225,9 @@ func (device *Device) RoutineReadFromTUN() {
 		elemsByPeer = make(map[*Peer]*QueueOutboundElementsContainer, batchSize)
 		count       = 0
 		sizes       = make([]int, batchSize)
-		offset      = MessageTransportHeaderSize
+
+		// Directly add space for IPv4 AEAD encryption
+		offset      = MessageTransportHeaderSize + 16
 	)
 
 	for i := range elems {
@@ -441,9 +443,10 @@ func calculatePaddingSize(packetSize, mtu int) int {
  *
  * Obs. One instance per core
  */
-func (device *Device) RoutineEncryption(id int) {
+ func (device *Device) RoutineEncryption(id int) {
 	var paddingZeros [PaddingMultiple]byte
 	var nonce [chacha20poly1305.NonceSize]byte
+	var IPv4offset = 20
 
 	defer device.log.Verbosef("Routine: encryption worker %d - stopped", id)
 	device.log.Verbosef("Routine: encryption worker %d - started", id)
@@ -451,6 +454,8 @@ func (device *Device) RoutineEncryption(id int) {
 	for elemsContainer := range device.queue.encryption.c {
 		for _, elem := range elemsContainer.elems {
 			// populate header fields
+
+			// Add padding in header for IP encryption
 			header := elem.buffer[:MessageTransportHeaderSize]
 
 			fieldType := header[0:4]
@@ -465,14 +470,17 @@ func (device *Device) RoutineEncryption(id int) {
 			paddingSize := calculatePaddingSize(len(elem.packet), int(device.tun.mtu.Load()))
 			elem.packet = append(elem.packet, paddingZeros[:paddingSize]...)
 
-			// encrypt content and release to consumer
-
+			// Partially encrypt packet. Only IPv4 (20 first bytes) is encryted
+			elem.packet = elem.buffer[:headSize + len(elem.packet)]
 			binary.LittleEndian.PutUint64(nonce[4:], elem.nonce)
-			elem.packet = elem.keypair.send.Seal(
-				header,
-				nonce[:],
-				elem.packet,
-				nil,
+			elem.packet = append(
+				elem.keypair.send.Seal(
+					header,
+					nonce[:],
+					elem.packet[:IPv4offset],
+					nil,
+				),
+				elem.packet[IPv4offset:]...
 			)
 		}
 		elemsContainer.Unlock()
