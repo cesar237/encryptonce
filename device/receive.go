@@ -255,20 +255,28 @@ func (device *Device) RoutineDecryption(id int) {
 			elem.counter = binary.LittleEndian.Uint64(counter)
 			// copy counter to nonce
 			binary.LittleEndian.PutUint64(nonce[0x4:0xc], elem.counter)
-			_, err = elem.keypair.receive.Open(
-				InnerIPv4[:0],
-				nonce[:],
-				encryptedInnerIPv4[:],
-				nil,
-			)
-			elem.packet = append(
-				elem.packet[:MessageTransportOffsetContent],
-				InnerIPv4[:]...,
-			)
-			elem.packet = append(
-				elem.packet[:MessageTransportOffsetCounter+20],
-				content...
-			)
+
+			// if it is a ipv4 packet, its length > ipv4_header_length + encryption_overhead
+			if len(elem.packet) > 20 + elem.keypair.receive.Overhead()
+			{
+				elem.packet, err = elem.keypair.receive.Open(
+					counter,
+					nonce[:],
+					encryptedInnerIPv4[:],
+					nil,
+				)
+				elem.packet = append(
+					elem.packet,
+					content...,
+				)
+			} else {
+				elem.packet, err = elem.keypair.receive.Open(
+					content[:0],
+					nonce[:],
+					content[:],
+					nil,
+				)
+			}
 			if err != nil {
 				elem.packet = nil
 			}

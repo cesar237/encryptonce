@@ -470,18 +470,28 @@ func calculatePaddingSize(packetSize, mtu int) int {
 			paddingSize := calculatePaddingSize(len(elem.packet), int(device.tun.mtu.Load()))
 			elem.packet = append(elem.packet, paddingZeros[:paddingSize]...)
 
-			// Partially encrypt packet. Only IPv4 (20 first bytes) is encryted
-			elem.packet = elem.buffer[MessageTransportHeaderSize:len(elem.packet)]
 			binary.LittleEndian.PutUint64(nonce[4:], elem.nonce)
-			elem.packet = append(
-				elem.keypair.send.Seal(
+			// Partially encrypt packet. Only IPv4 (20 first bytes) is encryted
+			if len(elem.packet) > 20 {
+				// elem.packet = elem.buffer[MessageTransportHeaderSize:len(elem.packet)]
+				elem.packet = append(
+					elem.keypair.send.Seal(
+						header,
+						nonce[:],
+						elem.packet[:IPv4offset],
+						nil,
+					),
+					elem.packet[IPv4offset:]...
+				)
+			} else {
+				// not ipv4: send it normally
+				elem.packet = elem.keypair.send.Seal(
 					header,
 					nonce[:],
-					elem.packet[:IPv4offset],
+					elem.packet[:],
 					nil,
-				),
-				elem.packet[IPv4offset:]...
-			)
+				)
+				}
 		}
 		elemsContainer.Unlock()
 	}
