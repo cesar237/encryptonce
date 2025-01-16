@@ -246,8 +246,8 @@ func (device *Device) RoutineDecryption(id int) {
 		for _, elem := range elemsContainer.elems {
 			// split message into fields
 			counter := elem.packet[MessageTransportOffsetCounter:MessageTransportOffsetContent]
-			encryptedInnerIPv4 := elem.packet[MessageTransportOffsetContent:MessageTransportOffsetContent+16+20]
-			content := elem.packet[MessageTransportOffsetContent+16+20:]
+			encryptedInnerIPv4 := elem.packet[MessageTransportHeaderSize:MessageTransportHeaderSize+elem.keypair.receive.Overhead()+20]
+			content := elem.packet[MessageTransportHeaderSize+elem.keypair.receive.Overhead()+20:]
 
 			// decrypt and release to consumer
 			var err error
@@ -264,7 +264,7 @@ func (device *Device) RoutineDecryption(id int) {
 					nil,
 				)
 				elem.packet = append(
-					elem.packet,
+					elem.packet[:MessageTransportHeaderSize+20],
 					content...,
 				)
 			} else {
