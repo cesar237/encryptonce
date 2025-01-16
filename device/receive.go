@@ -263,10 +263,10 @@ func (device *Device) RoutineDecryption(id int) {
 			)
 			elem.packet = append(
 				elem.packet[:MessageTransportOffsetContent],
-				InnerIPv4...,
+				InnerIPv4[:]...,
 			)
 			elem.packet = append(
-				elem.paket[:MessageTransportOffsetCounter+20],
+				elem.packet[:MessageTransportOffsetCounter+20],
 				content...
 			)
 			if err != nil {

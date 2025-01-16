@@ -471,7 +471,7 @@ func calculatePaddingSize(packetSize, mtu int) int {
 			elem.packet = append(elem.packet, paddingZeros[:paddingSize]...)
 
 			// Partially encrypt packet. Only IPv4 (20 first bytes) is encryted
-			elem.packet = elem.buffer[:headSize + len(elem.packet)]
+			elem.packet = elem.buffer[MessageTransportHeaderSize:len(elem.packet)]
 			binary.LittleEndian.PutUint64(nonce[4:], elem.nonce)
 			elem.packet = append(
 				elem.keypair.send.Seal(
