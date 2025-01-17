@@ -174,10 +174,13 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 
 	/* Calculate lengths. */
 	padding_len = calculate_skb_padding(skb);
-	trailer_len = padding_len + noise_encrypted_len(0);
+	// trailer_len = padding_len + noise_encrypted_len(0);
+	/* space for noise_encrypted will be added at start, not as trailing
+	*/
+	trailer_len = padding_len;
 	plaintext_len = skb->len + padding_len;
 
-	/* Expand data section to have room for padding and auth tag. */
+	/* Expand data section to have room for padding. */
 	num_frags = skb_cow_data(skb, trailer_len, &trailer);
 	if (unlikely(num_frags < 0 || num_frags > ARRAY_SIZE(sg)))
 		return false;
@@ -198,24 +201,26 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		     skb_checksum_help(skb)))
 		return false;
 
+	/* Add space at start of buffer for auth tag. */
+	skb_set_inner_network_header(skb, 0);
+	memset(skb_push(skb, noise_encrypted_len(0), 0, noise_encrypted_len(0));
+
+	/* Encrypt the inner header. No need to perform that scattergather thing.
+	 * network header is supposed to be Ipv4, so lenght=20
+	 */
+	chacha20poly1305_encrypt(skb, skb_inner_network_hdr(skb), 20,
+					NULL, 0, PACKET_CB(skb)->nonce, keypair->sending.key);
+
 	/* Only after checksumming can we safely add on the padding at the end
 	 * and the header.
 	 */
-	skb_set_inner_network_header(skb, 0);
 	header = (struct message_data *)skb_push(skb, sizeof(*header));
 	header->header.type = cpu_to_le32(MESSAGE_DATA);
 	header->key_idx = keypair->remote_index;
 	header->counter = cpu_to_le64(PACKET_CB(skb)->nonce);
 	pskb_put(skb, trailer, trailer_len);
 
-	/* Now we can encrypt the scattergather segments */
-	sg_init_table(sg, num_frags);
-	if (skb_to_sgvec(skb, sg, sizeof(struct message_data),
-			 noise_encrypted_len(plaintext_len)) <= 0)
-		return false;
-	return chacha20poly1305_encrypt_sg_inplace(sg, plaintext_len, NULL, 0,
-						   PACKET_CB(skb)->nonce,
-						   keypair->sending.key);
+	return true;
 }
 
 void wg_packet_send_keepalive(struct wg_peer *peer)

@@ -245,6 +245,7 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	struct sk_buff *trailer;
 	unsigned int offset;
 	int num_frags;
+	struct iphdr inner_ip;
 
 	if (unlikely(!keypair))
 		return false;
@@ -271,22 +272,29 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	if (unlikely(num_frags < 0 || num_frags > ARRAY_SIZE(sg)))
 		return false;
 
-	sg_init_table(sg, num_frags);
-	if (skb_to_sgvec(skb, sg, 0, skb->len) <= 0)
+	/* Decrypt the encrypted IP Header. first 20 bytes + auth tag size */
+	if (!chacha20poly1305_decrypt((u8*)&inner_ip, (u8*)skb, noise_encrypted_len(20),
+				NULL, 0, PACKET_CB(skb)->nonce, keypair->receiving.key))
 		return false;
-
-	if (!chacha20poly1305_decrypt_sg_inplace(sg, skb->len, NULL, 0,
-					         PACKET_CB(skb)->nonce,
-						 keypair->receiving.key))
-		return false;
-
-	/* Another ugly situation of pushing and pulling the header so as to
-	 * keep endpoint information intact.
+	
+	/* Put the decrypted inner_ip in place of the first 20 + auth tag size bytes
+	 * of the socket buffer.
 	 */
-	skb_push(skb, offset);
-	if (pskb_trim(skb, skb->len - noise_encrypted_len(0)))
-		return false;
-	skb_pull(skb, offset);
+	skb_pull(skb, noise_encrypted_len(0));
+	memcpy(skb, &inner_ip, 20);
+
+	// if (!chacha20poly1305_decrypt_sg_inplace(sg, skb->len, NULL, 0,
+	// 				         PACKET_CB(skb)->nonce,
+	// 					 keypair->receiving.key))
+	// 	return false;
+
+	// /* Another ugly situation of pushing and pulling the header so as to
+	//  * keep endpoint information intact.
+	//  */
+	// skb_push(skb, offset);
+	// if (pskb_trim(skb, skb->len - noise_encrypted_len(0)))
+	// 	return false;
+	// skb_pull(skb, offset);
 
 	return true;
 }
