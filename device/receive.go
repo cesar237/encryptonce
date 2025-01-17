@@ -246,8 +246,9 @@ func (device *Device) RoutineDecryption(id int) {
 		for _, elem := range elemsContainer.elems {
 			// split message into fields
 			counter := elem.packet[MessageTransportOffsetCounter:MessageTransportOffsetContent]
-			encryptedInnerIPv4 := elem.packet[MessageTransportHeaderSize:MessageTransportHeaderSize+elem.keypair.receive.Overhead()+20]
-			content := elem.packet[MessageTransportHeaderSize+elem.keypair.receive.Overhead()+20:]
+			content := elem.packet[MessageTransportOffsetContent:]
+			encryptedInnerIPv4 := content[:elem.keypair.receive.Overhead()+20]
+			
 
 			// decrypt and release to consumer
 			var err error
@@ -255,17 +256,26 @@ func (device *Device) RoutineDecryption(id int) {
 			// copy counter to nonce
 			binary.LittleEndian.PutUint64(nonce[0x4:0xc], elem.counter)
 
+			// elem.packet, err = elem.keypair.receive.Open(
+			// 	content[:0],
+			// 	nonce[:],
+			// 	content[:20 + elem.keypair.receive.Overhead()], // size of the ipv4 header
+			// 	nil,
+			//   )
+	  
+			//   elem.packet = append(elem.packet, content[20 + elem.keypair.receive.Overhead():]...) // append unencrypted data
+
 			// if it is a ipv4 packet, its length > ipv4_header_length + encryption_overhead
 			if len(elem.packet) > 20 + elem.keypair.receive.Overhead() {
 				elem.packet, err = elem.keypair.receive.Open(
-					counter,
+					content[:0],
 					nonce[:],
 					encryptedInnerIPv4[:],
 					nil,
 				)
 				elem.packet = append(
-					elem.packet[:MessageTransportHeaderSize+20],
-					content...,
+					elem.packet,
+					content[20+elem.keypair.receive.Overhead():]...,
 				)
 			} else {
 				elem.packet, err = elem.keypair.receive.Open(
