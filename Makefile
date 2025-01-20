@@ -15,3 +15,15 @@ wireguard-y += ratelimiter.o
 wireguard-y += cookie.o
 wireguard-y += netlink.o
 obj-$(CONFIG_WIREGUARD) := wireguard.o
+
+KERN_DIR=/lib/modules/$(shell uname -r)/build/
+
+host:
+	make -C $(KERN_DIR) M=$(PWD) modules
+install:
+	make -C $(KERN_DIR) M=$(PWD) modules_install
+	depmod -A
+clean:
+	make -C $(KERN_DIR) M=$(PWD) clean
+help:
+	make -C $(KERN_DIR) M=$(PWD) help
