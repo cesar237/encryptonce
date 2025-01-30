@@ -179,7 +179,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 
 	/* Expand data section to have room for padding and auth tag. */
 	num_frags = skb_cow_data(skb, trailer_len, &trailer);
-	if (unlikely(num_frags < 0 || num_frags > ARRAY_SIZE(sg)))
+	if (unlikely(num_frags < 0))
 		return false;
 
 	/* Set the padding to zeros, and make sure it and the auth tag are part
