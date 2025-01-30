@@ -271,14 +271,14 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	if (unlikely(num_frags < 0 || num_frags > ARRAY_SIZE(sg)))
 		return false;
 
-	sg_init_table(sg, num_frags);
-	if (skb_to_sgvec(skb, sg, 0, skb->len) <= 0)
-		return false;
+	// sg_init_table(sg, num_frags);
+	// if (skb_to_sgvec(skb, sg, 0, skb->len) <= 0)
+	// 	return false;
 
-	if (!chacha20poly1305_decrypt_sg_inplace(sg, skb->len, NULL, 0,
-					         PACKET_CB(skb)->nonce,
-						 keypair->receiving.key))
-		return false;
+	// if (!chacha20poly1305_decrypt_sg_inplace(sg, skb->len, NULL, 0,
+	// 				         PACKET_CB(skb)->nonce,
+	// 					 keypair->receiving.key))
+	// 	return false;
 
 	/* Another ugly situation of pushing and pulling the header so as to
 	 * keep endpoint information intact.
@@ -510,7 +510,7 @@ static void wg_packet_consume_data(struct wg_device *wg, struct sk_buff *skb)
 {
 	__le32 idx = ((struct message_data *)skb->data)->key_idx;
 	struct wg_peer *peer = NULL;
-	int ret;
+	int ret = 0;
 
 	rcu_read_lock_bh();
 	PACKET_CB(skb)->keypair =
@@ -523,10 +523,18 @@ static void wg_packet_consume_data(struct wg_device *wg, struct sk_buff *skb)
 	if (unlikely(READ_ONCE(peer->is_dead)))
 		goto err;
 
-	ret = wg_queue_enqueue_per_device_and_peer(&wg->decrypt_queue, &peer->rx_queue, skb,
-						   wg->packet_crypt_wq, &wg->decrypt_queue.last_cpu);
-	if (unlikely(ret == -EPIPE))
-		wg_queue_enqueue_per_peer_rx(skb, PACKET_STATE_DEAD);
+	atomic_set_release(&PACKET_CB(skb)->state, PACKET_STATE_UNCRYPTED);
+
+	wg_prev_queue_enqueue(&peer->rx_queue, skb);
+	enum packet_state state =
+		likely(decrypt_packet(skb, PACKET_CB(skb)->keypair)) ?
+			PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
+	wg_queue_enqueue_per_peer_rx(skb, state);
+
+	// ret = wg_queue_enqueue_per_device_and_peer(&wg->decrypt_queue, &peer->rx_queue, skb,
+	// 					   wg->packet_crypt_wq, &wg->decrypt_queue.last_cpu);
+	// if (unlikely(ret == -EPIPE))
+	// 	wg_queue_enqueue_per_peer_rx(skb, PACKET_STATE_DEAD);
 	if (likely(!ret || ret == -EPIPE)) {
 		rcu_read_unlock_bh();
 		return;

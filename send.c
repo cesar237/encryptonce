@@ -162,7 +162,7 @@ static unsigned int calculate_skb_padding(struct sk_buff *skb)
 static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 {
 	unsigned int padding_len, plaintext_len, trailer_len;
-	struct scatterlist sg[MAX_SKB_FRAGS + 8];
+	// struct scatterlist sg[MAX_SKB_FRAGS + 8];
 	struct message_data *header;
 	struct sk_buff *trailer;
 	int num_frags;
@@ -209,13 +209,14 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	pskb_put(skb, trailer, trailer_len);
 
 	/* Now we can encrypt the scattergather segments */
-	sg_init_table(sg, num_frags);
-	if (skb_to_sgvec(skb, sg, sizeof(struct message_data),
-			 noise_encrypted_len(plaintext_len)) <= 0)
-		return false;
-	return chacha20poly1305_encrypt_sg_inplace(sg, plaintext_len, NULL, 0,
-						   PACKET_CB(skb)->nonce,
-						   keypair->sending.key);
+	// sg_init_table(sg, num_frags);
+	// if (skb_to_sgvec(skb, sg, sizeof(struct message_data),
+	// 		 noise_encrypted_len(plaintext_len)) <= 0)
+	// 	return false;
+	// return chacha20poly1305_encrypt_sg_inplace(sg, plaintext_len, NULL, 0,
+	// 					   PACKET_CB(skb)->nonce,
+	// 					   keypair->sending.key);
+	return true;
 }
 
 void wg_packet_send_keepalive(struct wg_peer *peer)
@@ -312,15 +313,32 @@ static void wg_packet_create_data(struct wg_peer *peer, struct sk_buff *first)
 {
 	struct wg_device *wg = peer->device;
 	int ret = -EINVAL;
+	struct sk_buff *skb, *next;
+	enum packet_state state = PACKET_STATE_CRYPTED;
 
 	rcu_read_lock_bh();
 	if (unlikely(READ_ONCE(peer->is_dead)))
 		goto err;
 
-	ret = wg_queue_enqueue_per_device_and_peer(&wg->encrypt_queue, &peer->tx_queue, first,
-						   wg->packet_crypt_wq, &wg->encrypt_queue.last_cpu);
-	if (unlikely(ret == -EPIPE))
-		wg_queue_enqueue_per_peer_tx(first, PACKET_STATE_DEAD);
+	atomic_set_release(&PACKET_CB(first)->state, PACKET_STATE_UNCRYPTED);
+
+	wg_prev_queue_enqueue(&peer->tx_queue, skb);
+	skb_list_walk_safe(first, skb, next) {
+		if (likely(encrypt_packet(skb,
+				PACKET_CB(first)->keypair))) {
+			wg_reset_packet(skb, true);
+		} else {
+			state = PACKET_STATE_DEAD;
+			break;
+		}
+	}
+	wg_queue_enqueue_per_peer_tx(first, state);
+
+	ret = 0;
+	// ret = wg_queue_enqueue_per_device_and_peer(&wg->encrypt_queue, &peer->tx_queue, first,
+	// 					   wg->packet_crypt_wq, &wg->encrypt_queue.last_cpu);
+	// if (unlikely(ret == -EPIPE))
+	// 	wg_queue_enqueue_per_peer_tx(first, PACKET_STATE_DEAD);
 err:
 	rcu_read_unlock_bh();
 	if (likely(!ret || ret == -EPIPE))
