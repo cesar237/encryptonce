@@ -312,7 +312,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 static void wg_packet_create_data(struct wg_peer *peer, struct sk_buff *first)
 {
 	// struct wg_device *wg = peer->device;
-	int ret = -EINVAL;
+	int ret = 0;
 	struct sk_buff *skb, *next;
 	enum packet_state state = PACKET_STATE_CRYPTED;
 
