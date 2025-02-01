@@ -316,16 +316,16 @@ static void wg_packet_create_data(struct wg_peer *peer, struct sk_buff *first)
 	struct sk_buff *skb, *next;
 	enum packet_state state = PACKET_STATE_CRYPTED;
 
-	pr_info("wg_packet_create_data()\n");
+	// pr_info("wg_packet_create_data()\n");
 
 	rcu_read_lock_bh();
 	if (unlikely(READ_ONCE(peer->is_dead)))
 		goto err;
 
-	pr_info("atomic_set_release()\n");
+	// pr_info("atomic_set_release()\n");
 	atomic_set_release(&PACKET_CB(first)->state, PACKET_STATE_UNCRYPTED);
 
-	pr_info("wg_prev_queue_enqueue()\n");
+	// pr_info("wg_prev_queue_enqueue()\n");
 	wg_prev_queue_enqueue(&peer->tx_queue, first);
 
 	// pr_info("skb_list()\n");
@@ -368,7 +368,7 @@ void wg_packet_send_staged_packets(struct wg_peer *peer)
 	struct sk_buff_head packets;
 	struct sk_buff *skb;
 
-	pr_info("wg_packet_send_staged_packet()\n");
+	// pr_info("wg_packet_send_staged_packet()\n");
 
 	/* Steal the current queue into our local one. */
 	__skb_queue_head_init(&packets);
