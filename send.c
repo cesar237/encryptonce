@@ -162,7 +162,7 @@ static unsigned int calculate_skb_padding(struct sk_buff *skb)
 static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 {
 	unsigned int padding_len, plaintext_len, trailer_len;
-	// struct scatterlist sg[MAX_SKB_FRAGS + 8];
+	struct scatterlist sg[MAX_SKB_FRAGS + 8];
 	struct message_data *header;
 	struct sk_buff *trailer;
 	int num_frags;
@@ -209,14 +209,14 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	pskb_put(skb, trailer, trailer_len);
 
 	/* Now we can encrypt the scattergather segments */
-	// sg_init_table(sg, num_frags);
-	// if (skb_to_sgvec(skb, sg, sizeof(struct message_data),
-	// 		 noise_encrypted_len(plaintext_len)) <= 0)
-	// 	return false;
-	// return chacha20poly1305_encrypt_sg_inplace(sg, plaintext_len, NULL, 0,
-	// 					   PACKET_CB(skb)->nonce,
-	// 					   keypair->sending.key);
-	return true;
+	sg_init_table(sg, num_frags);
+	if (skb_to_sgvec(skb, sg, sizeof(struct message_data),
+			 noise_encrypted_len(plaintext_len)) <= 0)
+		return false;
+	return chacha20poly1305_encrypt_sg_inplace(sg, plaintext_len, NULL, 0,
+						   PACKET_CB(skb)->nonce,
+						   keypair->sending.key);
+	// return true;
 }
 
 void wg_packet_send_keepalive(struct wg_peer *peer)
