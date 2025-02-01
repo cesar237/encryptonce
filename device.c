@@ -143,6 +143,8 @@ static netdev_tx_t wg_xmit(struct sk_buff *skb, struct net_device *dev)
 	u32 mtu;
 	int ret;
 
+	pr_info("wg_xmit()\n");
+
 	if (unlikely(!wg_check_packet_protocol(skb))) {
 		ret = -EPROTONOSUPPORT;
 		net_dbg_ratelimited("%s: Invalid IP packet\n", dev->name);
