@@ -174,8 +174,8 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
     // unsigned int total_headers_len = ip_header_len + tcp_header_len;
 	unsigned int total_headers_len = 20; // IP header len here...
 
-	print_hex_dump(KERN_INFO, "encrypt_packet: skb", DUMP_PREFIX_ADDRESS,
-            16, 1, skb->data, skb->len, true);
+	// print_hex_dump(KERN_INFO, "encrypt_packet: skb", DUMP_PREFIX_ADDRESS,
+            // 16, 1, skb->data, skb->len, true);
 
 	/* Allocate buffer for headers */
     u8 *headers_buf = kmalloc(noise_encrypted_len(total_headers_len), GFP_ATOMIC);
@@ -185,16 +185,16 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	/* Copy both headers to our buffer */
     skb_copy_bits(skb, skb_network_offset(skb), headers_buf, total_headers_len);
 
-	print_hex_dump(KERN_INFO, "encrypt_packet - headers_buf content: ", DUMP_PREFIX_ADDRESS,
-            16, 1, headers_buf, total_headers_len, true);
+	// print_hex_dump(KERN_INFO, "encrypt_packet - headers_buf content: ", DUMP_PREFIX_ADDRESS,
+    //         16, 1, headers_buf, total_headers_len, true);
 
 	/* Encrypt the headers in our buffer */
     chacha20poly1305_encrypt(headers_buf, headers_buf, total_headers_len,
                                  NULL, 0, PACKET_CB(skb)->nonce,
                                  keypair->sending.key);
 
-	print_hex_dump(KERN_INFO, "encrypt_packet - encrypted headers_buf: ", DUMP_PREFIX_ADDRESS,
-            16, 1, headers_buf, noise_encrypted_len(total_headers_len), true);
+	// print_hex_dump(KERN_INFO, "encrypt_packet - encrypted headers_buf: ", DUMP_PREFIX_ADDRESS,
+    //         16, 1, headers_buf, noise_encrypted_len(total_headers_len), true);
 	// {
     //     kfree(headers_buf);
     //     return false;
@@ -214,7 +214,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	/* Expand data section to have room for padding and auth tag. */
 	num_frags = skb_cow_data(skb, trailer_len, &trailer);
 	if (unlikely(num_frags < 0))
-		return false;
+		goto err;
 
 	/* Set the padding to zeros, and make sure it and the auth tag are part
 	 * of the skb.
@@ -225,12 +225,12 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	 * stack's headers and the auth tag.
 	 */
 	if (unlikely(skb_cow_head(skb, noise_encrypted_len(DATA_PACKET_HEAD_ROOM)) < 0))
-		return false;
+		goto err;
 
 	/* Finalize checksum calculation for the inner packet, if required. */
 	if (unlikely(skb->ip_summed == CHECKSUM_PARTIAL &&
 		     skb_checksum_help(skb)))
-		return false;
+		goto err;
 
 	/* Only after checksumming can we safely add on the padding at the end
 	 * and the header.
@@ -242,8 +242,8 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	skb_push(skb, noise_encrypted_len(0));
 	// inner_header_offset -= noise_encrypted_len(0);
 
-	print_hex_dump(KERN_INFO, "encrypt_packet - room for auth tag: ", DUMP_PREFIX_ADDRESS,
-            16, 1, skb->data, skb->len, true);
+	// print_hex_dump(KERN_INFO, "encrypt_packet - room for auth tag: ", DUMP_PREFIX_ADDRESS,
+    //         16, 1, skb->data, skb->len, true);
 
 	header = (struct message_data *)skb_push(skb, sizeof(*header));
 	header->header.type = cpu_to_le32(MESSAGE_DATA);
@@ -251,15 +251,15 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	header->counter = cpu_to_le64(PACKET_CB(skb)->nonce);
 	pskb_put(skb, trailer, trailer_len);
 
-	print_hex_dump(KERN_INFO, "encrypt_packet - after wg header ", DUMP_PREFIX_ADDRESS,
-            16, 1, skb->data, skb->len, true);
+	// print_hex_dump(KERN_INFO, "encrypt_packet - after wg header ", DUMP_PREFIX_ADDRESS,
+    //         16, 1, skb->data, skb->len, true);
 
 	/* Copy encrypted headers back to their original position */
     skb_store_bits(skb, sizeof(struct message_data),
 		headers_buf, noise_encrypted_len(total_headers_len));
     
-	print_hex_dump(KERN_INFO, "encrypt_packet - result after store: ", DUMP_PREFIX_ADDRESS,
-            16, 1, skb->data, skb->len, true);
+	// print_hex_dump(KERN_INFO, "encrypt_packet - result after store: ", DUMP_PREFIX_ADDRESS,
+    //         16, 1, skb->data, skb->len, true);
 
     /* Free our temporary buffer */
     kfree(headers_buf);
@@ -273,6 +273,10 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	// 					   PACKET_CB(skb)->nonce,
 	// 					   keypair->sending.key);
 	return true;
+
+err:
+	kfree(headers_buf);
+	return false
 }
 
 void wg_packet_send_keepalive(struct wg_peer *peer)

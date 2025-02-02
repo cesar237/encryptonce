@@ -246,8 +246,8 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	unsigned int offset, iph_len = 20; // Only IP header accounted
 	int num_frags;
 
-	print_hex_dump(KERN_INFO, "decrypt_packet - rcv skb: ", DUMP_PREFIX_ADDRESS,
-            16, 1, skb->data, skb->len, true);
+	// print_hex_dump(KERN_INFO, "decrypt_packet - rcv skb: ", DUMP_PREFIX_ADDRESS,
+    //         16, 1, skb->data, skb->len, true);
 
 	/* Allocate buffer for headers */
     u8 *encrypted_hdr = kmalloc(noise_encrypted_len(iph_len), GFP_ATOMIC);
@@ -255,13 +255,13 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		return false;
 
 	if (unlikely(!keypair))
-		return false;
+		goto err;
 
 	if (unlikely(!READ_ONCE(keypair->receiving.is_valid) ||
 		  wg_birthdate_has_expired(keypair->receiving.birthdate, REJECT_AFTER_TIME) ||
 		  keypair->receiving_counter.counter >= REJECT_AFTER_MESSAGES)) {
 		WRITE_ONCE(keypair->receiving.is_valid, false);
-		return false;
+		goto err;
 	}
 
 	PACKET_CB(skb)->nonce =
@@ -280,21 +280,19 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	/* Copy encrypted header to our buffer */
     skb_copy_bits(skb, 0, encrypted_hdr, noise_encrypted_len(iph_len));
 
-	print_hex_dump(KERN_INFO, "decrypt_packet - encrypt_buf content: ", DUMP_PREFIX_ADDRESS,
-            16, 1, encrypted_hdr, noise_encrypted_len(20), true);
+	// print_hex_dump(KERN_INFO, "decrypt_packet - encrypt_buf content: ", DUMP_PREFIX_ADDRESS,
+    //         16, 1, encrypted_hdr, noise_encrypted_len(20), true);
 
 	if (!chacha20poly1305_decrypt(encrypted_hdr, encrypted_hdr, noise_encrypted_len(iph_len),
                                  NULL, 0, PACKET_CB(skb)->nonce,
-                                 keypair->receiving.key)) {
-		kfree(encrypted_hdr);
-		return false;
-	}
+                                 keypair->receiving.key))
+		goto err;
 
-	print_hex_dump(KERN_INFO, "decrypt_packet - decrypted_header: ", DUMP_PREFIX_ADDRESS,
-            16, 1, encrypted_hdr, noise_encrypted_len(20), true);
+	// print_hex_dump(KERN_INFO, "decrypt_packet - decrypted_header: ", DUMP_PREFIX_ADDRESS,
+    //         16, 1, encrypted_hdr, noise_encrypted_len(20), true);
 
-	print_hex_dump(KERN_INFO, "decrypt_packet - skb wthout wg hdr: ", DUMP_PREFIX_ADDRESS,
-            16, 1, skb->data, skb->len, true);
+	// print_hex_dump(KERN_INFO, "decrypt_packet - skb wthout wg hdr: ", DUMP_PREFIX_ADDRESS,
+    //         16, 1, skb->data, skb->len, true);
 
 	/* remove auth tag space */
 	skb_pull(skb, noise_encrypted_len(0));
@@ -302,8 +300,8 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	/* Store the decrypted header back to skb */
 	skb_store_bits(skb, 0, encrypted_hdr, iph_len);
 
-	print_hex_dump(KERN_INFO, "decrypt_packet - after storing decrypted header: ", DUMP_PREFIX_ADDRESS,
-            16, 1, skb->data, skb->len, true);
+	// print_hex_dump(KERN_INFO, "decrypt_packet - after storing decrypted header: ", DUMP_PREFIX_ADDRESS,
+    //         16, 1, skb->data, skb->len, true);
 
 	// if (unlikely(num_frags < 0 || num_frags > ARRAY_SIZE(sg)))
 	// 	return false;
@@ -322,10 +320,14 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	 */
 	skb_push(skb, offset);
 	if (pskb_trim(skb, skb->len))
-		return false;
+		goto err;
 	skb_pull(skb, offset);
 
 	return true;
+
+err:
+	kfree(encrypted_hdr);
+	return false;
 }
 
 /* This is RFC6479, a replay detection bitmap algorithm that avoids bitshifts */
