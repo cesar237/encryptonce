@@ -276,7 +276,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 
 err:
 	kfree(headers_buf);
-	return false
+	return false;
 }
 
 void wg_packet_send_keepalive(struct wg_peer *peer)
