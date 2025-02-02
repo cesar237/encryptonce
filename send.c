@@ -174,7 +174,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
     // unsigned int total_headers_len = ip_header_len + tcp_header_len;
 	unsigned int total_headers_len = 20; // IP header len here...
 
-	print_hex_dump(KERN_INFO, "encrypt_packet: ", DUMP_PREFIX_ADDRESS,
+	print_hex_dump(KERN_INFO, "encrypt_packet: skb", DUMP_PREFIX_ADDRESS,
             16, 1, skb->data, skb->len, true);
 
 	/* Allocate buffer for headers */

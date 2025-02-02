@@ -283,7 +283,7 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	print_hex_dump(KERN_INFO, "decrypt_packet - encrypt_buf content: ", DUMP_PREFIX_ADDRESS,
             16, 1, encrypted_hdr, noise_encrypted_len(20), true);
 
-	if (!chacha20poly1305_decrypt(encrypted_hdr, encrypted_hdr, iph_len,
+	if (!chacha20poly1305_decrypt(encrypted_hdr, encrypted_hdr, noise_encrypted_len(iph_len),
                                  NULL, 0, PACKET_CB(skb)->nonce,
                                  keypair->receiving.key)) {
 		kfree(encrypted_hdr);
