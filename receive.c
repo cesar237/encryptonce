@@ -241,10 +241,15 @@ static void keep_key_fresh(struct wg_peer *peer)
 
 static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 {
-	struct scatterlist sg[MAX_SKB_FRAGS + 8];
+	// struct scatterlist sg[MAX_SKB_FRAGS + 8];
 	struct sk_buff *trailer;
-	unsigned int offset;
+	unsigned int offset, iph_len = 20; // Only IP header accounted
 	int num_frags;
+
+	/* Allocate buffer for headers */
+    u8 *encrypted_hdr = kmalloc(noise_encrypted_len(iph_len), GFP_ATOMIC);
+    if (!encrypted_hdr)
+        return false;
 
 	if (unlikely(!keypair))
 		return false;
@@ -268,8 +273,25 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	num_frags = skb_cow_data(skb, 0, &trailer);
 	offset += sizeof(struct message_data);
 	skb_pull(skb, offset);
-	if (unlikely(num_frags < 0 || num_frags > ARRAY_SIZE(sg)))
+
+	/* Copy encrypted header to our buffer */
+    skb_copy_bits(skb, 0, encrypted_hdr, noise_encrypted_len(iph_len));
+
+	if (!chacha20poly1305_decrypt(encrypted_hdr, encrypted_hdr, iph_len,
+                                 NULL, 0, PACKET_CB(skb)->nonce,
+                                 keypair->receiving.key)) {
+		kfree(encrypted_hdr);
 		return false;
+	}
+
+	/* remove auth tag space */
+	skb_pull(skb, noise_encrypted_len(0));
+
+	/* Store the decrypted header back to skb */
+	skb_store_bits(skb, 0, encrypted_hdr, iph_len);
+
+	// if (unlikely(num_frags < 0 || num_frags > ARRAY_SIZE(sg)))
+	// 	return false;
 
 	// sg_init_table(sg, num_frags);
 	// if (skb_to_sgvec(skb, sg, 0, skb->len) <= 0)
@@ -284,7 +306,7 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	 * keep endpoint information intact.
 	 */
 	skb_push(skb, offset);
-	if (pskb_trim(skb, skb->len - noise_encrypted_len(0)))
+	if (pskb_trim(skb, skb->len))
 		return false;
 	skb_pull(skb, offset);
 
