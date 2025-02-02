@@ -169,8 +169,8 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	int inner_header_offset;
 
 	 /* Get header lengths */
-    unsigned int ip_header_len = skb_network_header_len(skb);
-    unsigned int tcp_header_len = skb_transport_header_len(skb);
+    // unsigned int ip_header_len = skb_network_header_len(skb);
+    // unsigned int tcp_header_len = skb_transport_header_len(skb);
     // unsigned int total_headers_len = ip_header_len + tcp_header_len;
 	unsigned int total_headers_len = 20; // IP header len here...
 
@@ -185,7 +185,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	/* Encrypt the headers in our buffer */
     chacha20poly1305_encrypt(headers_buf, headers_buf, total_headers_len,
                                  NULL, 0, PACKET_CB(skb)->nonce,
-                                 keypair->sending.key)
+                                 keypair->sending.key);
 	// {
     //     kfree(headers_buf);
     //     return false;
