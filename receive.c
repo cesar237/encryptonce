@@ -248,8 +248,8 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 
 	/* Allocate buffer for headers */
     u8 *encrypted_hdr = kmalloc(noise_encrypted_len(iph_len), GFP_ATOMIC);
-    if (!encrypted_hdr)
-        return false;
+	if (!encrypted_hdr)
+		return false;
 
 	if (unlikely(!keypair))
 		return false;
