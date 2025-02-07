@@ -241,13 +241,9 @@ static void keep_key_fresh(struct wg_peer *peer)
 
 static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 {
-	// struct scatterlist sg[MAX_SKB_FRAGS + 8];
 	struct sk_buff *trailer;
 	unsigned int offset, iph_len = 20; // Only IP header accounted
 	int num_frags;
-
-	// print_hex_dump(KERN_INFO, "decrypt_packet - rcv skb: ", DUMP_PREFIX_ADDRESS,
-    //         16, 1, skb->data, skb->len, true);
 
 	/* Allocate buffer for headers */
     u8 *encrypted_hdr = kmalloc(noise_encrypted_len(iph_len), GFP_ATOMIC);
@@ -280,40 +276,16 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	/* Copy encrypted header to our buffer */
     skb_copy_bits(skb, 0, encrypted_hdr, noise_encrypted_len(iph_len));
 
-	// print_hex_dump(KERN_INFO, "decrypt_packet - encrypt_buf content: ", DUMP_PREFIX_ADDRESS,
-    //         16, 1, encrypted_hdr, noise_encrypted_len(20), true);
-
 	if (!chacha20poly1305_decrypt(encrypted_hdr, encrypted_hdr, noise_encrypted_len(iph_len),
                                  NULL, 0, PACKET_CB(skb)->nonce,
                                  keypair->receiving.key))
 		goto err;
-
-	// print_hex_dump(KERN_INFO, "decrypt_packet - decrypted_header: ", DUMP_PREFIX_ADDRESS,
-    //         16, 1, encrypted_hdr, noise_encrypted_len(20), true);
-
-	// print_hex_dump(KERN_INFO, "decrypt_packet - skb wthout wg hdr: ", DUMP_PREFIX_ADDRESS,
-    //         16, 1, skb->data, skb->len, true);
 
 	/* remove auth tag space */
 	skb_pull(skb, noise_encrypted_len(0));
 
 	/* Store the decrypted header back to skb */
 	skb_store_bits(skb, 0, encrypted_hdr, iph_len);
-
-	// print_hex_dump(KERN_INFO, "decrypt_packet - after storing decrypted header: ", DUMP_PREFIX_ADDRESS,
-    //         16, 1, skb->data, skb->len, true);
-
-	// if (unlikely(num_frags < 0 || num_frags > ARRAY_SIZE(sg)))
-	// 	return false;
-
-	// sg_init_table(sg, num_frags);
-	// if (skb_to_sgvec(skb, sg, 0, skb->len) <= 0)
-	// 	return false;
-
-	// if (!chacha20poly1305_decrypt_sg_inplace(sg, skb->len, NULL, 0,
-	// 				         PACKET_CB(skb)->nonce,
-	// 					 keypair->receiving.key))
-	// 	return false;
 
 	/* Another ugly situation of pushing and pulling the header so as to
 	 * keep endpoint information intact.
