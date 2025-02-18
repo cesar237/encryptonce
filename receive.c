@@ -242,7 +242,7 @@ static void keep_key_fresh(struct wg_peer *peer)
 static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 {
 	struct sk_buff *trailer;
-	unsigned int offset, iph_len = 20; // Only IP header accounted
+	unsigned int offset, iph_len = 40; // Only TCP/IP header accounted
 	int num_frags;
 
 	/* Allocate buffer for headers */
