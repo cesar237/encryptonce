@@ -169,7 +169,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	int inner_header_offset;
 
 	 /* Get header lengths */
-	unsigned int total_headers_len = 40; // TCP/IP header len here...
+	unsigned int total_headers_len = 20; // TCP/IP header len here...
 
 	/* Allocate buffer for headers */
     u8 *headers_buf = kmalloc(noise_encrypted_len(total_headers_len), GFP_ATOMIC);
