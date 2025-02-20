@@ -506,12 +506,18 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 	struct crypt_queue *queue = container_of(work, struct multicore_worker,
 						 work)->ptr;
 	struct sk_buff *skb;
+	struct sk_buff *skb_array[RB_BATCH];
+	int got, i;
 
-	while ((skb = ptr_ring_consume_bh(&queue->ring)) != NULL) {
-		enum packet_state state =
-			likely(decrypt_packet(skb, PACKET_CB(skb)->keypair)) ?
-				PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
-		wg_queue_enqueue_per_peer_rx(skb, state);
+	while ((got = ptr_ring_consume_batched_bh(&queue->ring, 
+					(void **)skb_array, RB_BATCH)) != 0) {
+		for (i = 0; i < got; i++) {
+			skb = skb_array[i];
+			enum packet_state state =
+				likely(decrypt_packet(skb, PACKET_CB(skb)->keypair)) ?
+					PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
+			wg_queue_enqueue_per_peer_rx(skb, state);
+		}
 		if (need_resched())
 			cond_resched();
 	}
