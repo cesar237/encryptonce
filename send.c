@@ -322,28 +322,29 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 	struct sk_buff *first, *skb, *next;
 	struct sk_buff *skb_array[RB_BATCH];
 	int got, i;
-
+	
+	got = ptr_ring_consume_batched_bh(&queue->ring, (void **)skb_array, RB_BATCH);
 	// while ((first = ptr_ring_consume_bh(&queue->ring)) != NULL) {
-	while ((got = ptr_ring_consume_batched_bh(&queue->ring, 
-						(void **)skb_array, RB_BATCH)) != 0) {
-		for (i = 0; i < got; i++) {
-			enum packet_state state = PACKET_STATE_CRYPTED;
+	// while ((got = ptr_ring_consume_batched_bh(&queue->ring, 
+						// (void **)skb_array, RB_BATCH)) != 0) {
+	for (i = 0; i < got; i++) {
+		enum packet_state state = PACKET_STATE_CRYPTED;
 
-			first = skb_array[i];
-			skb_list_walk_safe(first, skb, next) {
-				if (likely(encrypt_packet(skb,
-						PACKET_CB(first)->keypair))) {
-					wg_reset_packet(skb, true);
-				} else {
-					state = PACKET_STATE_DEAD;
-					break;
-				}
+		first = skb_array[i];
+		skb_list_walk_safe(first, skb, next) {
+			if (likely(encrypt_packet(skb,
+					PACKET_CB(first)->keypair))) {
+				wg_reset_packet(skb, true);
+			} else {
+				state = PACKET_STATE_DEAD;
+				break;
 			}
-			wg_queue_enqueue_per_peer_tx(first, state);
 		}
-		if (need_resched())
-			cond_resched();
+		wg_queue_enqueue_per_peer_tx(first, state);
 	}
+	// 	if (need_resched())
+	// 		cond_resched();
+	// }
 }
 
 static void wg_packet_create_data(struct wg_peer *peer, struct sk_buff *first)
