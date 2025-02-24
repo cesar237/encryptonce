@@ -162,32 +162,21 @@ static unsigned int calculate_skb_padding(struct sk_buff *skb)
 static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 {
 	unsigned int padding_len, plaintext_len, trailer_len;
-	// struct scatterlist sg[MAX_SKB_FRAGS + 8];
+	struct scatterlist sg[MAX_SKB_FRAGS + 8];
 	struct message_data *header;
 	struct sk_buff *trailer;
 	int num_frags;
 	int inner_header_offset;
 
-	 /* Get header lengths */
-	unsigned int total_headers_len = 20; // TCP/IP header len here...
+	// TCP/IP header len here...
+	unsigned int total_headers_len = 120;
 
-	/* Allocate buffer for headers */
-    u8 *headers_buf = kmalloc(noise_encrypted_len(total_headers_len), GFP_ATOMIC);
-    if (!headers_buf)
-        return false;
-
-	/* Copy both headers to our buffer */
-    skb_copy_bits(skb, skb_network_offset(skb), headers_buf, total_headers_len);
-
-	/* Encrypt the headers in our buffer */
-    chacha20poly1305_encrypt(headers_buf, headers_buf, total_headers_len,
-                                 NULL, 0, PACKET_CB(skb)->nonce,
-                                 keypair->sending.key);
-
-	/* Force hash calculation before encryption so that flow analysis is
-	 * consistent over the inner packet.
-	 */
-	skb_get_hash(skb);
+	/* Ports corresponding to service on which partial encryption applies */
+	unsigned short partial_encrypt_ports[2];
+	bool is_partial_encrypt_service = false;
+	unsigned short sport = 0, dport = 0;
+	partial_encrypt_ports[0] = 443;
+	partial_encrypt_ports[1] = 22;
 
 	/* Calculate lengths. */
 	padding_len = calculate_skb_padding(skb);
@@ -195,58 +184,148 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	// trailer_len = padding_len + noise_encrypted_len(0);
 	plaintext_len = skb->len + padding_len;
 
-	/* Expand data section to have room for padding and auth tag. */
-	num_frags = skb_cow_data(skb, trailer_len, &trailer);
-	if (unlikely(num_frags < 0))
-		goto err;
+	// Get the service port:
+	switch (ip_hdr(skb)->protocol) {
+		case IPPROTO_TCP:
+			sport = ntohs(tcp_hdr(skb)->source);
+			dport = ntohs(tcp_hdr(skb)->dest);
+			break;
+		case IPPROTO_UDP:
+			sport = ntohs(udp_hdr(skb)->source);
+			dport = ntohs(udp_hdr(skb)->dest);
+			break;
+	}
 
-	/* Set the padding to zeros, and make sure it and the auth tag are part
-	 * of the skb.
-	 */
-	memset(skb_tail_pointer(trailer), 0, padding_len);
+	// Check if sport or dport is in partial_encrypt_ports
+	if (sport == 443 || sport == 22 || dport == 443 || dport == 22)
+		is_partial_encrypt_service = true; 
 
-	/* Expand head section to have room for our header and the network
-	 * stack's headers and the auth tag.
-	 */
-	if (unlikely(skb_cow_head(skb, noise_encrypted_len(DATA_PACKET_HEAD_ROOM)) < 0))
-		goto err;
+	/*
+	Check conditions for partial encryption: 
+	1. SKB_LEN should be greater than HDR_LEN 
+	2. Transport Port should be in ecrypted_service = 443 or 22
+	*/
+	// Get destination port of transport protocol
 
-	/* Finalize checksum calculation for the inner packet, if required. */
-	if (unlikely(skb->ip_summed == CHECKSUM_PARTIAL &&
-		     skb_checksum_help(skb)))
-		goto err;
+	if (is_partial_encrypt_service && plaintext_len > total_headers_len) {
+		/* Do partial encryption */
+		pr_info("partial encrypt\n");
 
-	/* Only after checksumming can we safely add on the padding at the end
-	 * and the header.
-	 */
-	skb_set_inner_network_header(skb, 0);
-	// inner_header_offset = skb_inner_network_offset(skb);
+		/* Allocate buffer for headers */
+		u8 *headers_buf = kmalloc(noise_encrypted_len(total_headers_len), GFP_ATOMIC);
+		if (!headers_buf)
+			return false;
+	
+		/* Copy both headers to our buffer */
+		skb_copy_bits(skb, skb_network_offset(skb), headers_buf, total_headers_len);
+	
+		/* Encrypt the headers in our buffer */
+		chacha20poly1305_encrypt(headers_buf, headers_buf, total_headers_len,
+									 NULL, 0, PACKET_CB(skb)->nonce,
+									 keypair->sending.key);
+	
+		/* Force hash calculation before encryption so that flow analysis is
+		 * consistent over the inner packet.
+		 */
+		skb_get_hash(skb);
+	
+		/* Expand data section to have room for padding and auth tag. */
+		num_frags = skb_cow_data(skb, trailer_len, &trailer);
+		if (unlikely(num_frags < 0))
+			goto err;
+	
+		/* Set the padding to zeros, and make sure it and the auth tag are part
+		 * of the skb.
+		 */
+		memset(skb_tail_pointer(trailer), 0, padding_len);
+	
+		/* Expand head section to have room for our header and the network
+		 * stack's headers and the auth tag.
+		 */
+		if (unlikely(skb_cow_head(skb, noise_encrypted_len(DATA_PACKET_HEAD_ROOM)) < 0))
+			goto err;
+	
+		/* Finalize checksum calculation for the inner packet, if required. */
+		if (unlikely(skb->ip_summed == CHECKSUM_PARTIAL &&
+				 skb_checksum_help(skb)))
+			goto err;
+	
+		/* Only after checksumming can we safely add on the padding at the end
+		 * and the header.
+		 */
+		skb_set_inner_network_header(skb, 0);
+		// inner_header_offset = skb_inner_network_offset(skb);
+	
+		/* Create space for auth tag. */
+		skb_push(skb, noise_encrypted_len(0));
+		// inner_header_offset -= noise_encrypted_len(0);
+	
+		// print_hex_dump(KERN_INFO, "encrypt_packet - room for auth tag: ", DUMP_PREFIX_ADDRESS,
+		//         16, 1, skb->data, skb->len, true);
+	
+		header = (struct message_data *)skb_push(skb, sizeof(*header));
+		header->header.type = cpu_to_le32(MESSAGE_DATA_PARTIAL);
+		header->key_idx = keypair->remote_index;
+		header->counter = cpu_to_le64(PACKET_CB(skb)->nonce);
+		pskb_put(skb, trailer, trailer_len);
+	
+		/* Copy encrypted headers back to their original position */
+		skb_store_bits(skb, sizeof(struct message_data),
+			headers_buf, noise_encrypted_len(total_headers_len));
+		
+		/* Free our temporary buffer */
+		kfree(headers_buf);
+	
+		/* Now we can encrypt the scattergather segments */
+		return true;
+	err:
+		kfree(headers_buf);
+		return false;
+	}
+	else {
+		/* Do Total encryption */
+		pr_info("total encrypt\n");
 
-	/* Create space for auth tag. */
-	skb_push(skb, noise_encrypted_len(0));
-	// inner_header_offset -= noise_encrypted_len(0);
+		/* Expand data section to have room for padding and auth tag. */
+		num_frags = skb_cow_data(skb, trailer_len, &trailer);
+		if (unlikely(num_frags < 0 || num_frags > ARRAY_SIZE(sg)))
+			return false;
 
-	// print_hex_dump(KERN_INFO, "encrypt_packet - room for auth tag: ", DUMP_PREFIX_ADDRESS,
-    //         16, 1, skb->data, skb->len, true);
+		/* Set the padding to zeros, and make sure it and the auth tag are part
+		* of the skb.
+		*/
+		memset(skb_tail_pointer(trailer), 0, padding_len);
 
-	header = (struct message_data *)skb_push(skb, sizeof(*header));
-	header->header.type = cpu_to_le32(MESSAGE_DATA);
-	header->key_idx = keypair->remote_index;
-	header->counter = cpu_to_le64(PACKET_CB(skb)->nonce);
-	pskb_put(skb, trailer, trailer_len);
+		/* Expand head section to have room for our header and the network
+		* stack's headers.
+		*/
+		if (unlikely(skb_cow_head(skb, DATA_PACKET_HEAD_ROOM) < 0))
+			return false;
 
-	/* Copy encrypted headers back to their original position */
-    skb_store_bits(skb, sizeof(struct message_data),
-		headers_buf, noise_encrypted_len(total_headers_len));
-    
-    /* Free our temporary buffer */
-    kfree(headers_buf);
+		/* Finalize checksum calculation for the inner packet, if required. */
+		if (unlikely(skb->ip_summed == CHECKSUM_PARTIAL &&
+				skb_checksum_help(skb)))
+			return false;
 
-	/* Now we can encrypt the scattergather segments */
-	return true;
-err:
-	kfree(headers_buf);
-	return false;
+		/* Only after checksumming can we safely add on the padding at the end
+		* and the header.
+		*/
+		skb_set_inner_network_header(skb, 0);
+		header = (struct message_data *)skb_push(skb, sizeof(*header));
+		header->header.type = cpu_to_le32(MESSAGE_DATA);
+		header->key_idx = keypair->remote_index;
+		header->counter = cpu_to_le64(PACKET_CB(skb)->nonce);
+		pskb_put(skb, trailer, trailer_len);
+
+		/* Now we can encrypt the scattergather segments */
+		sg_init_table(sg, num_frags);
+		if (skb_to_sgvec(skb, sg, sizeof(struct message_data),
+				noise_encrypted_len(plaintext_len)) <= 0)
+			return false;
+		return chacha20poly1305_encrypt_sg_inplace(sg, plaintext_len, NULL, 0,
+							PACKET_CB(skb)->nonce,
+							keypair->sending.key);
+	}
 }
 
 void wg_packet_send_keepalive(struct wg_peer *peer)
