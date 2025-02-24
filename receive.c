@@ -264,6 +264,8 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	if (SKB_TYPE_LE32(skb) == cpu_to_le32(MESSAGE_DATA_PARTIAL))
 		partial_encryption = true;
 
+	print_hex_dump(KERN_INFO, "decrypt_packet", DUMP_PREFIX_ADDRESS,
+		16, 1, skb->data, skb->len, true);
 	if (partial_encryption) {
 		pr_info("partial decrypt\n");
 
@@ -303,6 +305,9 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		if (pskb_trim(skb, skb->len))
 			goto err;
 		skb_pull(skb, offset);
+
+		print_hex_dump(KERN_INFO, "partial decrypt_packet done!", DUMP_PREFIX_ADDRESS,
+			16, 1, skb->data, skb->len, true);
 	
 		return true;
 	
@@ -341,6 +346,9 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		if (pskb_trim(skb, skb->len - noise_encrypted_len(0)))
 			return false;
 		skb_pull(skb, offset);
+
+		print_hex_dump(KERN_INFO, "total decrypt_packet done!", DUMP_PREFIX_ADDRESS,
+			16, 1, skb->data, skb->len, true);
 
 		return true;
 	}

@@ -204,6 +204,9 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	*/
 	// Get destination port of transport protocol
 
+	print_hex_dump(KERN_INFO, "encrypt_packet...", DUMP_PREFIX_ADDRESS,
+		16, 1, skb->data, skb->len, true);
+
 	if (is_partial_encrypt_service && 
 			skb->len + padding_len > total_headers_len) {
 		/* Do partial encryption */
@@ -279,7 +282,8 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		/* Free our temporary buffer */
 		kfree(headers_buf);
 	
-		/* Now we can encrypt the scattergather segments */
+		print_hex_dump(KERN_INFO, "partial encrypt_packet done!", DUMP_PREFIX_ADDRESS,
+			16, 1, skb->data, skb->len, true);
 		return true;
 	err:
 		kfree(headers_buf);
@@ -330,9 +334,12 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		if (skb_to_sgvec(skb, sg, sizeof(struct message_data),
 				noise_encrypted_len(plaintext_len)) <= 0)
 			return false;
-		return chacha20poly1305_encrypt_sg_inplace(sg, plaintext_len, NULL, 0,
+		bool ret = chacha20poly1305_encrypt_sg_inplace(sg, plaintext_len, NULL, 0,
 							PACKET_CB(skb)->nonce,
 							keypair->sending.key);
+		print_hex_dump(KERN_INFO, "total decrypt_packet done!", DUMP_PREFIX_ADDRESS,
+					16, 1, skb->data, skb->len, true);
+		return ret;
 	}
 }
 
