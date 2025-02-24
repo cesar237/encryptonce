@@ -498,20 +498,20 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 	struct sk_buff *skb_array[RB_BATCH];
 	int got, i;
 
-	got = ptr_ring_consume_batched_bh(&queue->ring, 
-		(void **)skb_array, RB_BATCH);
-	// while ((got = ptr_ring_consume_batched_bh(&queue->ring, 
-	// 				(void **)skb_array, RB_BATCH)) != 0) {
-	for (i = 0; i < got; i++) {
-		skb = skb_array[i];
-		enum packet_state state =
-			likely(decrypt_packet(skb, PACKET_CB(skb)->keypair)) ?
-				PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
-		wg_queue_enqueue_per_peer_rx(skb, state);
+	// got = ptr_ring_consume_batched_bh(&queue->ring, 
+	// 	(void **)skb_array, RB_BATCH);
+	while ((got = ptr_ring_consume_batched_bh(&queue->ring, 
+					(void **)skb_array, RB_BATCH)) != 0) {
+		for (i = 0; i < got; i++) {
+			skb = skb_array[i];
+			enum packet_state state =
+				likely(decrypt_packet(skb, PACKET_CB(skb)->keypair)) ?
+					PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
+			wg_queue_enqueue_per_peer_rx(skb, state);
+		}
+		if (need_resched())
+			cond_resched();
 	}
-	// 	if (need_resched())
-	// 		cond_resched();
-	// }
 }
 
 static void wg_packet_consume_data(struct wg_device *wg, struct sk_buff *skb)
