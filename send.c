@@ -180,9 +180,6 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 
 	/* Calculate lengths. */
 	padding_len = calculate_skb_padding(skb);
-	trailer_len = padding_len;
-	// trailer_len = padding_len + noise_encrypted_len(0);
-	plaintext_len = skb->len + padding_len;
 
 	// Get the service port:
 	switch (ip_hdr(skb)->protocol) {
@@ -207,9 +204,15 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	*/
 	// Get destination port of transport protocol
 
-	if (is_partial_encrypt_service && plaintext_len > total_headers_len) {
+	if (is_partial_encrypt_service && 
+			skb->len + padding_len > total_headers_len) {
 		/* Do partial encryption */
 		pr_info("partial encrypt\n");
+
+		/* Calculate Trailer Length */
+		trailer_len = padding_len;
+		// trailer_len = padding_len + noise_encrypted_len(0);
+		plaintext_len = skb->len + padding_len;
 
 		/* Allocate buffer for headers */
 		u8 *headers_buf = kmalloc(noise_encrypted_len(total_headers_len), GFP_ATOMIC);
@@ -285,6 +288,11 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	else {
 		/* Do Total encryption */
 		pr_info("total encrypt\n");
+
+		/* Calculate Trailer Length */
+		// trailer_len = padding_len;
+		trailer_len = padding_len + noise_encrypted_len(0);
+		plaintext_len = skb->len + padding_len;
 
 		/* Expand data section to have room for padding and auth tag. */
 		num_frags = skb_cow_data(skb, trailer_len, &trailer);
