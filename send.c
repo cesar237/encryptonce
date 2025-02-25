@@ -282,7 +282,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		/* Free our temporary buffer */
 		kfree(headers_buf);
 	
-		print_hex_dump(KERN_INFO, "partial encrypt_packet done!\n", DUMP_PREFIX_ADDRESS,
+		print_hex_dump(KERN_INFO, "partial encrypt_packet done!", DUMP_PREFIX_ADDRESS,
 			16, 1, skb->data, skb->len, true);
 		return true;
 	err:
@@ -337,7 +337,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		bool ret = chacha20poly1305_encrypt_sg_inplace(sg, plaintext_len, NULL, 0,
 							PACKET_CB(skb)->nonce,
 							keypair->sending.key);
-		print_hex_dump(KERN_INFO, "total encrypt_packet done!\n", DUMP_PREFIX_ADDRESS,
+		print_hex_dump(KERN_INFO, "total encrypt_packet done!", DUMP_PREFIX_ADDRESS,
 					16, 1, skb->data, skb->len, true);
 		return ret;
 	}
