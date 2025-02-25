@@ -16,6 +16,7 @@
 #include <linux/udp.h>
 #include <net/ip_tunnels.h>
 
+
 /* Must be called with bh disabled. */
 static void update_rx_stats(struct wg_peer *peer, size_t len)
 {
@@ -260,7 +261,7 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		return false;
 	}
 
-	print_hex_dump(KERN_INFO, "decrypt_packet", DUMP_PREFIX_ADDRESS,
+	print_hex_dump(KERN_INFO, "decrypt_packet", DUMP_PREFIX_OFFSET,
 		16, 1, skb->data, skb->len, true);
 
 	PACKET_CB(skb)->nonce =
@@ -310,7 +311,7 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 			goto err;
 		skb_pull(skb, offset);
 
-		print_hex_dump(KERN_INFO, "partial decrypt_packet done!", DUMP_PREFIX_ADDRESS,
+		print_hex_dump(KERN_INFO, "partial decrypt_packet done!", DUMP_PREFIX_OFFSET,
 			16, 1, skb->data, skb->len, true);
 	
 		return true;
@@ -351,7 +352,7 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 			return false;
 		skb_pull(skb, offset);
 
-		print_hex_dump(KERN_INFO, "total decrypt_packet done!", DUMP_PREFIX_ADDRESS,
+		print_hex_dump(KERN_INFO, "total decrypt_packet done!", DUMP_PREFIX_OFFSET,
 			16, 1, skb->data, skb->len, true);
 
 		return true;

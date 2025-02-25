@@ -18,6 +18,7 @@
 #include <net/udp.h>
 #include <net/sock.h>
 
+
 static void wg_packet_send_handshake_initiation(struct wg_peer *peer)
 {
 	struct message_handshake_initiation packet;
@@ -204,7 +205,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	*/
 	// Get destination port of transport protocol
 
-	print_hex_dump(KERN_INFO, "encrypt_packet...", DUMP_PREFIX_ADDRESS,
+	print_hex_dump(KERN_INFO, "encrypt_packet...", DUMP_PREFIX_OFFSET,
 		16, 1, skb->data, skb->len, true);
 
 	if (is_partial_encrypt_service && 
@@ -266,7 +267,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		skb_push(skb, noise_encrypted_len(0));
 		// inner_header_offset -= noise_encrypted_len(0);
 	
-		// print_hex_dump(KERN_INFO, "encrypt_packet - room for auth tag: ", DUMP_PREFIX_ADDRESS,
+		// print_hex_dump(KERN_INFO, "encrypt_packet - room for auth tag: ", DUMP_PREFIX_OFFSET,
 		//         16, 1, skb->data, skb->len, true);
 	
 		header = (struct message_data *)skb_push(skb, sizeof(*header));
@@ -282,7 +283,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		/* Free our temporary buffer */
 		kfree(headers_buf);
 	
-		print_hex_dump(KERN_INFO, "partial encrypt_packet done!", DUMP_PREFIX_ADDRESS,
+		print_hex_dump(KERN_INFO, "partial encrypt_packet done!", DUMP_PREFIX_OFFSET,
 			16, 1, skb->data, skb->len, true);
 		return true;
 	err:
@@ -337,7 +338,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		bool ret = chacha20poly1305_encrypt_sg_inplace(sg, plaintext_len, NULL, 0,
 							PACKET_CB(skb)->nonce,
 							keypair->sending.key);
-		print_hex_dump(KERN_INFO, "total encrypt_packet done!", DUMP_PREFIX_ADDRESS,
+		print_hex_dump(KERN_INFO, "total encrypt_packet done!", DUMP_PREFIX_OFFSET,
 					16, 1, skb->data, skb->len, true);
 		return ret;
 	}
