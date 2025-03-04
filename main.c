@@ -18,11 +18,6 @@
 #include <linux/moduleparam.h>
 #include <net/rtnetlink.h>
 
-static int wg_batch_size = 1;
-
-module_param(wg_batch_size, int, 0777);
-MODULE_PARAM_DESC(wg_batch_size, "The static batch size for encrypt and decrypt ring buffers");
-
 static int __init wg_mod_init(void)
 {
 	int ret;

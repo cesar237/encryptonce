@@ -289,8 +289,6 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 	struct crypt_queue *queue = container_of(work, struct multicore_worker,
 						 work)->ptr;
 	struct sk_buff *first, *skb, *next;
-	struct sk_buff *skb_array[RB_BATCH];
-	int got;
 
 	if (wg_batch_size == 1) {
 		// Normal polling mode
@@ -313,7 +311,16 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 	}
 	else {
 		// Batching mode
-		got = ptr_ring_consume_batched_bh(&queue->ring, (void **)skb_array, RB_BATCH);
+		struct sk_buff **skb_array;
+		int got;
+		skb_array = kmalloc(wg_batch_size * sizeof(struct sk_buff*), GFP_KERNEL);
+		
+		if (!skb_array) {
+			printk(KERN_ERR "Failed to allocate memory for array\n");
+			return -ENOMEM;
+		}
+
+		got = ptr_ring_consume_batched_bh(&queue->ring, (void **)skb_array, wg_batch_size);
 		for (int i = 0; i < got; i++) {
 			enum packet_state state = PACKET_STATE_CRYPTED;
 
@@ -329,6 +336,8 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 			}
 			wg_queue_enqueue_per_peer_tx(first, state);
 		}
+
+		kfree(skb_array);
 	}
 }
 
