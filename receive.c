@@ -515,7 +515,7 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 		skb_array = kmalloc(wg_batch_size * sizeof(struct sk_buff*), GFP_KERNEL);
 		if (!skb_array) {
 			printk(KERN_ERR "Failed to allocate memory for array\n");
-			return -ENOMEM;
+			return;
 		}
 
 		got = ptr_ring_consume_batched_bh(&queue->ring, 

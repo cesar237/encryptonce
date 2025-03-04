@@ -317,7 +317,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 		
 		if (!skb_array) {
 			printk(KERN_ERR "Failed to allocate memory for array\n");
-			return -ENOMEM;
+			return;
 		}
 
 		got = ptr_ring_consume_batched_bh(&queue->ring, (void **)skb_array, wg_batch_size);
