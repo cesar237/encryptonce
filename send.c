@@ -2,7 +2,7 @@
 /*
  * Copyright (C) 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  */
-
+#define DEFINE_WG_PARAMS
 #include "queueing.h"
 #include "timers.h"
 #include "device.h"
@@ -290,7 +290,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 						 work)->ptr;
 	struct sk_buff *first, *skb, *next;
 
-	if (wg_batch_size_ == 1) {
+	if (wg_batch_size == 1) {
 		// Normal polling mode
 		while ((first = ptr_ring_consume_bh(&queue->ring)) != NULL) {
 			enum packet_state state = PACKET_STATE_CRYPTED;
@@ -313,14 +313,14 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 		// Batching mode
 		struct sk_buff **skb_array;
 		int got;
-		skb_array = kmalloc(wg_batch_size_ * sizeof(struct sk_buff*), GFP_KERNEL);
+		skb_array = kmalloc(wg_batch_size * sizeof(struct sk_buff*), GFP_KERNEL);
 		
 		if (!skb_array) {
 			printk(KERN_ERR "Failed to allocate memory for array\n");
 			return;
 		}
 
-		got = ptr_ring_consume_batched_bh(&queue->ring, (void **)skb_array, wg_batch_size_);
+		got = ptr_ring_consume_batched_bh(&queue->ring, (void **)skb_array, wg_batch_size);
 		for (int i = 0; i < got; i++) {
 			enum packet_state state = PACKET_STATE_CRYPTED;
 

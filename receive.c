@@ -496,7 +496,7 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 						 work)->ptr;
 	struct sk_buff *skb;
 
-	if (wg_batch_size_ == 1) {
+	if (wg_batch_size == 1) {
 		// Polling mode
 		while ((skb = ptr_ring_consume_bh(&queue->ring)) != NULL) {
 			enum packet_state state =
@@ -512,14 +512,14 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 		struct sk_buff **skb_array;
 		int got;
 
-		skb_array = kmalloc(wg_batch_size_ * sizeof(struct sk_buff*), GFP_KERNEL);
+		skb_array = kmalloc(wg_batch_size * sizeof(struct sk_buff*), GFP_KERNEL);
 		if (!skb_array) {
 			printk(KERN_ERR "Failed to allocate memory for array\n");
 			return;
 		}
 
 		got = ptr_ring_consume_batched_bh(&queue->ring, 
-			(void **)skb_array, wg_batch_size_);
+			(void **)skb_array, wg_batch_size);
 		for (int i = 0; i < got; i++) {
 			skb = skb_array[i];
 			enum packet_state state =

@@ -25,8 +25,14 @@ struct multicore_worker {
 	struct work_struct work;
 };
 
-static int wg_batch_size_ = 1;
-module_param(wg_batch_size_, int, 0644);
+extern int wg_batch_size;
+
+#ifdef DEFINE_WG_PARAMS
+/* This section will only be compiled once in a specific source file */
+int wg_batch_size = 1;
+module_param(wg_batch_size, int, 0644);
+MODULE_PARM_DESC(wg_batch_size, "Batch size for wireguard operations");
+#endif
 
 struct crypt_queue {
 	struct ptr_ring ring;
