@@ -289,22 +289,46 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 	struct crypt_queue *queue = container_of(work, struct multicore_worker,
 						 work)->ptr;
 	struct sk_buff *first, *skb, *next;
+	struct sk_buff *skb_array[RB_BATCH];
+	int got;
 
-	while ((first = ptr_ring_consume_bh(&queue->ring)) != NULL) {
-		enum packet_state state = PACKET_STATE_CRYPTED;
-
-		skb_list_walk_safe(first, skb, next) {
-			if (likely(encrypt_packet(skb,
-					PACKET_CB(first)->keypair))) {
-				wg_reset_packet(skb, true);
-			} else {
-				state = PACKET_STATE_DEAD;
-				break;
+	if (wg_batch_size == 1) {
+		// Normal polling mode
+		while ((first = ptr_ring_consume_bh(&queue->ring)) != NULL) {
+			enum packet_state state = PACKET_STATE_CRYPTED;
+	
+			skb_list_walk_safe(first, skb, next) {
+				if (likely(encrypt_packet(skb,
+						PACKET_CB(first)->keypair))) {
+					wg_reset_packet(skb, true);
+				} else {
+					state = PACKET_STATE_DEAD;
+					break;
+				}
 			}
+			wg_queue_enqueue_per_peer_tx(first, state);
+			if (need_resched())
+				cond_resched();
 		}
-		wg_queue_enqueue_per_peer_tx(first, state);
-		if (need_resched())
-			cond_resched();
+	}
+	else {
+		// Batching mode
+		got = ptr_ring_consume_batched_bh(&queue->ring, (void **)skb_array, RB_BATCH);
+		for (int i = 0; i < got; i++) {
+			enum packet_state state = PACKET_STATE_CRYPTED;
+
+			first = skb_array[i];
+			skb_list_walk_safe(first, skb, next) {
+				if (likely(encrypt_packet(skb,
+						PACKET_CB(first)->keypair))) {
+					wg_reset_packet(skb, true);
+				} else {
+					state = PACKET_STATE_DEAD;
+					break;
+				}
+			}
+			wg_queue_enqueue_per_peer_tx(first, state);
+		}
 	}
 }
 
