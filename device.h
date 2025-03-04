@@ -25,8 +25,8 @@ struct multicore_worker {
 	struct work_struct work;
 };
 
-static int wg_batch_size = 1;
-module_param(wg_batch_size, int, 0644);
+static int wg_batch_size_ = 1;
+module_param(wg_batch_size_, int, 0644);
 
 struct crypt_queue {
 	struct ptr_ring ring;
