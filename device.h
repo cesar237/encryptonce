@@ -32,6 +32,10 @@ extern int wg_batch_size;
 int wg_batch_size = 1;
 module_param(wg_batch_size, int, 0644);
 MODULE_PARM_DESC(wg_batch_size, "Batch size for wireguard operations");
+
+int concurrency_level = 2;
+module_param(concurrency_level, int, 0644);
+MODULE_PARM_DESC(concurrency_level, "Concurrency level for wireguard thread pool");
 #endif
 
 struct crypt_queue {
