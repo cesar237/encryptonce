@@ -520,18 +520,13 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 
 		got = ptr_ring_consume_batched_bh(&queue->ring, 
 			(void **)skb_array, wg_batch_size);
-		while (got > 0) {
-			for (int i = 0; i < got; i++) {
-				skb = skb_array[i];
-				enum packet_state state =
-					likely(decrypt_packet(skb, PACKET_CB(skb)->keypair)) ?
-						PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
-				wg_queue_enqueue_per_peer_rx(skb, state);
-			}
-			if (need_resched())
-				cond_resched();
+		for (int i = 0; i < got; i++) {
+			skb = skb_array[i];
+			enum packet_state state =
+				likely(decrypt_packet(skb, PACKET_CB(skb)->keypair)) ?
+					PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
+			wg_queue_enqueue_per_peer_rx(skb, state);
 		}
-
 		kfree(skb_array);
 	}
 }
