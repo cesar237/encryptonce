@@ -26,8 +26,10 @@ struct multicore_worker {
 };
 
 extern int wg_batch_size;
+extern int concurrency_level;
 
 #ifdef DEFINE_WG_PARAMS
+
 /* This section will only be compiled once in a specific source file */
 int wg_batch_size = 1;
 module_param(wg_batch_size, int, 0644);
