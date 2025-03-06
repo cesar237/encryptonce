@@ -509,14 +509,8 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 	}
 	else {
 		// Batching mode
-		struct sk_buff **skb_array;
+		struct sk_buff *skb_array[MAX_BATCH_SIZE];
 		int got;
-
-		skb_array = kmalloc(wg_batch_size * sizeof(struct sk_buff*), GFP_KERNEL);
-		if (!skb_array) {
-			printk(KERN_ERR "Failed to allocate memory for array\n");
-			return;
-		}
 
 		got = ptr_ring_consume_batched_bh(&queue->ring, 
 			(void **)skb_array, wg_batch_size);
@@ -527,7 +521,6 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 					PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
 			wg_queue_enqueue_per_peer_rx(skb, state);
 		}
-		kfree(skb_array);
 	}
 }
 
