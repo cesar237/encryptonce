@@ -39,11 +39,42 @@ int wg_packet_queue_init(struct crypt_queue *queue, work_func_t function,
 	return 0;
 }
 
+int wg_packet_percpu_queue_init(struct percpu_crypt_queue *queue, work_func_t function,
+	unsigned int len)
+{
+	int ret, cpu;
+
+	memset(queue, 0, sizeof(*queue));
+	for_each_possible_cpu(cpu) {
+		ret = ptr_ring_init(per_cpu_ptr(&queue->ring, cpu), len, GFP_KERNEL);
+		if (ret)
+			return ret;
+	}
+	queue->worker = wg_packet_percpu_multicore_worker_alloc(function, queue);
+	if (!queue->worker) {
+		ptr_ring_cleanup(per_cpu_ptr(&queue->ring, cpu), NULL);
+		return -ENOMEM;
+	}
+	return 0;
+}
+
 void wg_packet_queue_free(struct crypt_queue *queue, bool purge)
 {
 	free_percpu(queue->worker);
 	WARN_ON(!purge && !__ptr_ring_empty(&queue->ring));
 	ptr_ring_cleanup(&queue->ring, purge ? __skb_array_destroy_skb : NULL);
+}
+
+void wg_packet_percpu_queue_free(struct percpu_crypt_queue *queue, bool purge)
+{
+	int cpu;
+
+	free_percpu(queue->worker);
+
+	for_each_possible_cpu(cpu){
+		WARN_ON(!purge && !__ptr_ring_empty(per_cpu_ptr(&queue->ring, cpu)));
+		ptr_ring_cleanup(percpu_crypt_queue(&queue->ring, cpu), NULL);
+	}
 }
 
 #define NEXT(skb) ((skb)->prev)

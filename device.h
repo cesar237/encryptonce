@@ -31,6 +31,12 @@ struct crypt_queue {
 	int last_cpu;
 };
 
+struct percpu_crypt_queue {
+	struct ptr_ring __percpu ring;
+	struct multicore_worker __percpu *worker;
+	int last_cpu;
+};
+
 struct prev_queue {
 	struct sk_buff *head, *tail, *peeked;
 	struct { struct sk_buff *next, *prev; } empty; // Match first 2 members of struct sk_buff.
@@ -39,7 +45,8 @@ struct prev_queue {
 
 struct wg_device {
 	struct net_device *dev;
-	struct crypt_queue encrypt_queue, decrypt_queue, handshake_queue;
+	struct crypt_queue handshake_queue;
+	struct percpu_crypt_queue encrypt_queue, decrypt_queue;
 	struct sock __rcu *sock4, *sock6;
 	struct net __rcu *creating_net;
 	struct noise_static_identity static_identity;
