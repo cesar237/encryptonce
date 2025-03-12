@@ -73,7 +73,7 @@ void wg_packet_percpu_queue_free(struct percpu_crypt_queue *queue, bool purge)
 
 	for_each_possible_cpu(cpu){
 		WARN_ON(!purge && !__ptr_ring_empty(per_cpu_ptr(&queue->ring, cpu)));
-		ptr_ring_cleanup(percpu_crypt_queue(&queue->ring, cpu), NULL);
+		ptr_ring_cleanup(per_cpu_ptr(&queue->ring, cpu), NULL);
 	}
 }
 
