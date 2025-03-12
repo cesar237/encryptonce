@@ -286,7 +286,7 @@ void wg_packet_tx_worker(struct work_struct *work)
 
 void wg_packet_encrypt_worker(struct work_struct *work)
 {
-	struct crypt_queue *queue = container_of(work, struct multicore_worker,
+	struct percpu_crypt_queue *queue = container_of(work, struct multicore_worker,
 						 work)->ptr;
 	struct sk_buff *first, *skb, *next;
 

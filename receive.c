@@ -492,7 +492,7 @@ next:
 
 void wg_packet_decrypt_worker(struct work_struct *work)
 {
-	struct crypt_queue *queue = container_of(work, struct multicore_worker,
+	struct percpu_crypt_queue *queue = container_of(work, struct multicore_worker,
 						 work)->ptr;
 	struct sk_buff *skb;
 
