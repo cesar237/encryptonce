@@ -44,8 +44,9 @@ int wg_packet_percpu_queue_init(struct percpu_crypt_queue *queue, work_func_t fu
 {
 	int ret, cpu;
 
+	pr_info("Intializing wg_percpu_queue\n");
 	memset(queue, 0, sizeof(*queue));
-	for_each_possible_cpu(cpu) {
+	for_each_online_cpu(cpu) {
 		ret = ptr_ring_init(per_cpu_ptr(&queue->ring, cpu), len, GFP_KERNEL);
 		if (ret)
 			return ret;
@@ -71,9 +72,9 @@ void wg_packet_percpu_queue_free(struct percpu_crypt_queue *queue, bool purge)
 
 	free_percpu(queue->worker);
 
-	for_each_possible_cpu(cpu){
+	for_each_online_cpu(cpu){
 		WARN_ON(!purge && !__ptr_ring_empty(per_cpu_ptr(&queue->ring, cpu)));
-		ptr_ring_cleanup(per_cpu_ptr(&queue->ring, cpu), NULL);
+		ptr_ring_cleanup(per_cpu_ptr(&queue->ring, cpu), purge ? __skb_array_destroy_skb : NULL);
 	}
 }
 
