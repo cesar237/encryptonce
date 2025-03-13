@@ -70,8 +70,10 @@ void wg_packet_percpu_queue_free(struct percpu_crypt_queue *queue, bool purge)
 {
 	int cpu;
 
+	pr_info("free_percpu(queue->worker)\n");
 	free_percpu(queue->worker);
 
+	pr_info("free each ptr_ring\n");
 	for_each_online_cpu(cpu){
 		WARN_ON(!purge && !__ptr_ring_empty(per_cpu_ptr(queue->ring, cpu)));
 		ptr_ring_cleanup(per_cpu_ptr(queue->ring, cpu), purge ? __skb_array_destroy_skb : NULL);
