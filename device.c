@@ -345,7 +345,7 @@ static int wg_newlink(struct net *src_net, struct net_device *dev,
 		goto err_destroy_handshake_receive;
 
 	wg->packet_crypt_wq = alloc_workqueue("wg-crypt-%s",
-			WQ_UNBOUND | WQ_MEM_RECLAIM, 64, dev->name);
+		WQ_CPU_INTENSIVE | WQ_MEM_RECLAIM, 0, dev->name);
 	if (!wg->packet_crypt_wq)
 		goto err_destroy_handshake_send;
 
