@@ -177,9 +177,9 @@ static inline int wg_queue_enqueue_per_device_and_peer(
 	 * packet as soon as it can.
 	 */
 	cpu = wg_cpumask_next_online(next_cpu);
-	pr_info("Enqueue rb=%p cpu=%d pid=%d\n", per_cpu_ptr(device_queue->ring, cpu), cpu, current->tgid);
+	// pr_info("Enqueue rb=%p cpu=%d pid=%d\n", per_cpu_ptr(device_queue->ring, cpu), cpu, current->tgid);
 	if (unlikely(ptr_ring_produce_bh(per_cpu_ptr(device_queue->ring, cpu), skb))) {
-		pr_info("Enqueue to cpu=%d failed!\n", cpu);
+		// pr_info("Enqueue to cpu=%d failed!\n", cpu);
 		return -EPIPE;
 	}
 	queue_work_on(cpu, wq, &per_cpu_ptr(device_queue->worker, cpu)->work);

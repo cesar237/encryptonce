@@ -291,7 +291,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 	struct sk_buff *first, *skb, *next;
 
 	while ((first = ptr_ring_consume_bh(this_cpu_ptr(queue->ring))) != NULL) {
-		pr_info("Dequeue Encrypt rb=%p cpu=%d\n", this_cpu_ptr(queue->ring), smp_processor_id());
+		// pr_info("Dequeue Encrypt rb=%p cpu=%d\n", this_cpu_ptr(queue->ring), smp_processor_id());
 		enum packet_state state = PACKET_STATE_CRYPTED;
 
 		skb_list_walk_safe(first, skb, next) {
