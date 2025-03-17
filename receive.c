@@ -552,12 +552,12 @@ void wg_packet_receive(struct wg_device *wg, struct sk_buff *skb)
 		if (unlikely(!rng_is_initialized()))
 			goto drop;
 		if (atomic_read(&wg->handshake_queue_len) > MAX_QUEUED_INCOMING_HANDSHAKES / 2) {
-			if (spin_trylock_bh(&wg->handshake_queue.ring.producer_lock)) {
-				ret = __ptr_ring_produce(&wg->handshake_queue.ring, skb);
-				spin_unlock_bh(&wg->handshake_queue.ring.producer_lock);
+			if (spin_trylock_bh(&wg->handshake_queue.ring[0].producer_lock)) {
+				ret = __ptr_ring_produce(&wg->handshake_queue.ring[0], skb);
+				spin_unlock_bh(&wg->handshake_queue.ring[0].producer_lock);
 			}
 		} else
-			ret = ptr_ring_produce_bh(&wg->handshake_queue.ring, skb);
+			ret = ptr_ring_produce_bh(&wg->handshake_queue.ring[0], skb);
 		if (ret) {
 	drop:
 			net_dbg_skb_ratelimited("%s: Dropping handshake packet from %pISpfsc\n",
