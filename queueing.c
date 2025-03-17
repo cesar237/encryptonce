@@ -69,12 +69,12 @@ void wg_packet_queue_free(struct crypt_queue *queue, bool purge)
 void wg_packet_percpu_queue_free(struct percpu_crypt_queue *queue, bool purge)
 {
 	int cpu;	
-	free_percpu(queue->worker);
-
 	for_each_online_cpu(cpu){
 		WARN_ON(!purge && !__ptr_ring_empty(per_cpu_ptr(queue->ring, cpu)));
 		ptr_ring_cleanup(per_cpu_ptr(queue->ring, cpu), purge ? __skb_array_destroy_skb : NULL);
 	}
+
+	free_percpu(queue->worker);
 }
 
 #define NEXT(skb) ((skb)->prev)
