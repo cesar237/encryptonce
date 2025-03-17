@@ -292,7 +292,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 
 	int cpu = smp_processor_id();
 	// pr_info("Running on cpu=%d\n", cpu);
-	while ((first = ptr_ring_consume_bh(&queue->ring[0])) != NULL) {
+	while ((first = ptr_ring_consume_bh(&queue->ring[cpu])) != NULL) {
 		enum packet_state state = PACKET_STATE_CRYPTED;
 
 		skb_list_walk_safe(first, skb, next) {

@@ -116,6 +116,7 @@ static int wg_stop(struct net_device *dev)
 	struct wg_device *wg = netdev_priv(dev);
 	struct wg_peer *peer;
 	struct sk_buff *skb;
+	int i;
 
 	mutex_lock(&wg->device_update_lock);
 	list_for_each_entry(peer, &wg->peer_list, peer_list) {
@@ -126,8 +127,10 @@ static int wg_stop(struct net_device *dev)
 		wg_noise_reset_last_sent_handshake(&peer->last_sent_handshake);
 	}
 	mutex_unlock(&wg->device_update_lock);
-	while ((skb = ptr_ring_consume(&wg->handshake_queue.ring[0])) != NULL)
-		kfree_skb(skb);
+	for (i=0; i<NR_RINGS; i++) {
+		while ((skb = ptr_ring_consume(&wg->handshake_queue.ring[i])) != NULL)
+			kfree_skb(skb);
+	}
 	atomic_set(&wg->handshake_queue_len, 0);
 	wg_socket_reinit(wg, NULL, NULL);
 	return 0;
