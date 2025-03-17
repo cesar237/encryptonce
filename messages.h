@@ -50,7 +50,7 @@ enum limits {
 	MAX_TIMER_HANDSHAKES = 90 / REKEY_TIMEOUT,
 	MAX_QUEUED_INCOMING_HANDSHAKES = 4096, /* TODO: replace this with DQL */
 	MAX_STAGED_PACKETS = 128,
-	NR_RINGS = 2,
+	NR_RINGS = 1,
 	MAX_QUEUED_PACKETS = 1024 /* TODO: replace this with DQL */
 };
 
