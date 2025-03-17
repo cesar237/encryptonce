@@ -294,7 +294,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 
 	if (wg_batch_size == 1) {
 		// Normal polling mode
-		while ((first = ptr_ring_consume_bh(&queue->ring[0])) != NULL) {
+		while ((first = ptr_ring_consume_bh(&queue->ring[cpu])) != NULL) {
 			enum packet_state state = PACKET_STATE_CRYPTED;
 	
 			skb_list_walk_safe(first, skb, next) {
@@ -316,7 +316,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 		struct sk_buff *skb_array[MAX_BATCH_SIZE];
 		int got;
 		
-		got = ptr_ring_consume_batched_bh(&queue->ring[0], (void **)skb_array, wg_batch_size);
+		got = ptr_ring_consume_batched_bh(&queue->ring[cpu], (void **)skb_array, wg_batch_size);
 		for (int i = 0; i < got; i++) {
 			enum packet_state state = PACKET_STATE_CRYPTED;
 
