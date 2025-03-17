@@ -497,7 +497,7 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 	struct sk_buff *skb;
 
 	int cpu = smp_processor_id();
-	pr_info("Running on cpu=%d\n", cpu);
+	// pr_info("Running on cpu=%d\n", cpu);
 	while ((skb = ptr_ring_consume_bh(&queue->ring[cpu])) != NULL) {
 		enum packet_state state =
 			likely(decrypt_packet(skb, PACKET_CB(skb)->keypair)) ?

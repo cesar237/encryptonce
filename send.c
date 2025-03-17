@@ -291,7 +291,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 	struct sk_buff *first, *skb, *next;
 
 	int cpu = smp_processor_id();
-	pr_info("Running on cpu=%d\n", cpu);
+	// pr_info("Running on cpu=%d\n", cpu);
 	while ((first = ptr_ring_consume_bh(&queue->ring[cpu])) != NULL) {
 		enum packet_state state = PACKET_STATE_CRYPTED;
 
