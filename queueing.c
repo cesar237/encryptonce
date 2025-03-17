@@ -53,12 +53,13 @@ void wg_packet_queue_free(struct crypt_queue *queue, bool purge)
 {
 	int i;
 	free_percpu(queue->worker);
-	WARN_ON(!purge && !__ptr_ring_empty(&queue->ring));
 
 	for (i=0; i<2; i++) {
+		WARN_ON(!purge && !__ptr_ring_empty(&ring[i]));
 		ptr_ring_cleanup(&ring[i], purge ? __skb_array_destroy_skb : NULL);		
 	}
 
+	WARN_ON(!purge && !__ptr_ring_empty(&queue->ring));
 	ptr_ring_cleanup(&queue->ring, purge ? __skb_array_destroy_skb : NULL);
 }
 
