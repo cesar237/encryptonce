@@ -18,6 +18,13 @@
 #include <linux/net.h>
 #include <linux/ptr_ring.h>
 
+struct wg_device;
+
+struct multicore_worker {
+	void *ptr;
+	struct work_struct work;
+};
+
 extern int wg_batch_size;
 
 #ifdef DEFINE_WG_PARAMS
@@ -28,14 +35,6 @@ module_param(wg_batch_size, int, 0644);
 MODULE_PARM_DESC(wg_batch_size, "Batch size for wireguard operations");
 
 #endif
-
-
-struct wg_device;
-
-struct multicore_worker {
-	void *ptr;
-	struct work_struct work;
-};
 
 struct crypt_queue {
 	struct ptr_ring ring[NR_RINGS];
