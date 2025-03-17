@@ -18,8 +18,6 @@
 #include <linux/net.h>
 #include <linux/ptr_ring.h>
 
-#define NR_RINGS 1
-extern struct ptr_ring ring[NR_RINGS];
 
 struct wg_device;
 
@@ -29,7 +27,7 @@ struct multicore_worker {
 };
 
 struct crypt_queue {
-	struct ptr_ring ring;
+	struct ptr_ring ring[NR_RINGS];
 	struct multicore_worker __percpu *worker;
 	int last_cpu;
 };

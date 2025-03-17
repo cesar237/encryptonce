@@ -6,10 +6,6 @@
 #include "queueing.h"
 #include <linux/skb_array.h>
 
-#define NR_RINGS 1
-
-struct ptr_ring ring[NR_RINGS];
-
 struct multicore_worker __percpu *
 wg_packet_percpu_multicore_worker_alloc(work_func_t function, void *ptr)
 {
@@ -32,20 +28,17 @@ int wg_packet_queue_init(struct crypt_queue *queue, work_func_t function,
 	int ret, i;
 
 	memset(queue, 0, sizeof(*queue));
-	ret = ptr_ring_init(&queue->ring, len, GFP_KERNEL);
-	
-	if (ret)
-		return ret;
-	
-	for (i=0; i<NR_RINGS; i++) {
-		ret = ptr_ring_init(&ring[i], len, GFP_KERNEL);
+
+	for (i = 0; i < NR_RINGS; i++) {
+		ret = ptr_ring_init(&queue->ring[i], len, GFP_KERNEL);
 		if (ret)
 			return ret;
 	}
 	
 	queue->worker = wg_packet_percpu_multicore_worker_alloc(function, queue);
 	if (!queue->worker) {
-		ptr_ring_cleanup(&queue->ring, NULL);
+		for (i = 0; i < NR_RINGS; i++)
+			ptr_ring_cleanup(&queue->ring[i], NULL);
 		return -ENOMEM;
 	}
 	return 0;
@@ -57,12 +50,9 @@ void wg_packet_queue_free(struct crypt_queue *queue, bool purge)
 	free_percpu(queue->worker);
 
 	for (i=0; i<NR_RINGS; i++) {
-		WARN_ON(!purge && !__ptr_ring_empty(&ring[i]));
-		ptr_ring_cleanup(&ring[i], purge ? __skb_array_destroy_skb : NULL);		
+		WARN_ON(!purge && !__ptr_ring_empty(&queue->ring[i]));
+		ptr_ring_cleanup(&queue->ring[i], purge ? __skb_array_destroy_skb : NULL);
 	}
-
-	WARN_ON(!purge && !__ptr_ring_empty(&queue->ring));
-	ptr_ring_cleanup(&queue->ring, purge ? __skb_array_destroy_skb : NULL);
 }
 
 #define NEXT(skb) ((skb)->prev)
