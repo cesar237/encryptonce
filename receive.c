@@ -523,9 +523,6 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 					PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
 			wg_queue_enqueue_per_peer_rx(skb, state);
 		}
-		#if EXPEDEBUG
-		trace_printk("%s - %d : %d\n", current->comm, current->pid, got);
-		#endif
 	}
 }
 
