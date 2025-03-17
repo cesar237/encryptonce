@@ -18,6 +18,8 @@
 #include <linux/net.h>
 #include <linux/ptr_ring.h>
 
+extern struct ptr_ring ring[2];
+
 struct wg_device;
 
 struct multicore_worker {
