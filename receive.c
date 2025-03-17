@@ -500,7 +500,7 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 
 	if (wg_batch_size == 1) {
 		// Polling mode
-		while ((skb = ptr_ring_consume_bh(&queue->ring[cpu % wg_nr_rings])) != NULL) {
+		while ((skb = ptr_ring_consume_bh(&queue->ring[cpu])) != NULL) {
 			enum packet_state state =
 				likely(decrypt_packet(skb, PACKET_CB(skb)->keypair)) ?
 					PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
@@ -514,7 +514,7 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 		struct sk_buff *skb_array[MAX_BATCH_SIZE];
 		int got;
 
-		got = ptr_ring_consume_batched_bh(&queue->ring[cpu % wg_nr_rings], 
+		got = ptr_ring_consume_batched_bh(&queue->ring[cpu], 
 			(void **)skb_array, wg_batch_size);
 		for (int i = 0; i < got; i++) {
 			skb = skb_array[i];
