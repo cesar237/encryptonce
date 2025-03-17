@@ -6,7 +6,9 @@
 #include "queueing.h"
 #include <linux/skb_array.h>
 
-struct ptr_ring ring[2];
+#define NR_RINGS 1
+
+struct ptr_ring ring[NR_RINGS];
 
 struct multicore_worker __percpu *
 wg_packet_percpu_multicore_worker_alloc(work_func_t function, void *ptr)
@@ -35,7 +37,7 @@ int wg_packet_queue_init(struct crypt_queue *queue, work_func_t function,
 	if (ret)
 		return ret;
 	
-	for (i=0; i<2; i++) {
+	for (i=0; i<NR_RINGS; i++) {
 		ret = ptr_ring_init(&ring[i], len, GFP_KERNEL);
 		if (ret)
 			return ret;
@@ -54,7 +56,7 @@ void wg_packet_queue_free(struct crypt_queue *queue, bool purge)
 	int i;
 	free_percpu(queue->worker);
 
-	for (i=0; i<2; i++) {
+	for (i=0; i<NR_RINGS; i++) {
 		WARN_ON(!purge && !__ptr_ring_empty(&ring[i]));
 		ptr_ring_cleanup(&ring[i], purge ? __skb_array_destroy_skb : NULL);		
 	}
