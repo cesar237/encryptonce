@@ -51,6 +51,7 @@ enum limits {
 	MAX_QUEUED_INCOMING_HANDSHAKES = 4096, /* TODO: replace this with DQL */
 	MAX_STAGED_PACKETS = 128,
 	NR_RINGS = 64,
+	MAX_BATCH_SIZE = 128,
 	MAX_QUEUED_PACKETS = 1024 /* TODO: replace this with DQL */
 };
 
