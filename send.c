@@ -3,6 +3,7 @@
  * Copyright (C) 2015-2019 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  */
 
+#define DEFINE_WG_PARAMS
 #include "queueing.h"
 #include "timers.h"
 #include "device.h"
