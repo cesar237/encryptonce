@@ -18,6 +18,7 @@
 #include <linux/net.h>
 #include <linux/ptr_ring.h>
 
+#define NR_RINGS 1
 extern struct ptr_ring ring[2];
 
 struct wg_device;
