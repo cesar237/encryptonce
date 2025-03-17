@@ -18,6 +18,17 @@
 #include <linux/net.h>
 #include <linux/ptr_ring.h>
 
+extern int wg_batch_size;
+
+#ifdef DEFINE_WG_PARAMS
+
+/* This section will only be compiled once in a specific source file */
+int wg_batch_size = 4;
+module_param(wg_batch_size, int, 0644);
+MODULE_PARM_DESC(wg_batch_size, "Batch size for wireguard operations");
+
+#endif
+
 
 struct wg_device;
 
