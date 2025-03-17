@@ -209,7 +209,7 @@ void wg_packet_handshake_receive_worker(struct work_struct *work)
 	struct wg_device *wg = container_of(queue, struct wg_device, handshake_queue);
 	struct sk_buff *skb;
 
-	while ((skb = ptr_ring_consume_bh(&queue->ring)) != NULL) {
+	while ((skb = ptr_ring_consume_bh(&queue->ring[0])) != NULL) {
 		wg_receive_handshake_packet(wg, skb);
 		dev_kfree_skb(skb);
 		atomic_dec(&wg->handshake_queue_len);
