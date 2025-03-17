@@ -174,7 +174,8 @@ static inline int wg_queue_enqueue_per_device_and_peer(
 	 * packet as soon as it can.
 	 */
 	cpu = wg_cpumask_next_online(next_cpu);
-	if (unlikely(ptr_ring_produce_bh(&device_queue->ring[0], skb)))
+	pr_info("wg_receive choosen_cpu=%d\n", cpu);
+	if (unlikely(ptr_ring_produce_bh(&device_queue->ring[cpu], skb)))
 		return -EPIPE;
 	queue_work_on(cpu, wq, &per_cpu_ptr(device_queue->worker, cpu)->work);
 	return 0;
