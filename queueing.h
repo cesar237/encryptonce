@@ -174,6 +174,7 @@ static inline int wg_queue_enqueue_per_device_and_peer(
 	 * packet as soon as it can.
 	 */
 	cpu = wg_cpumask_next_online(next_cpu);
+	cpu = smp_processor_id();
 	// pr_info("wg_receive choosen_cpu=%d\n", cpu);
 	if (unlikely(ptr_ring_produce_bh(&device_queue->ring[cpu % wg_nr_rings], skb)))
 		return -EPIPE;
