@@ -484,7 +484,7 @@ next:
 			break;
 	}
 
-	endtime = ktime_get_ns();
+	endtime_rx = ktime_get_ns();
 	if (work_done < budget)
 		napi_complete_done(napi, work_done);
 	return work_done;

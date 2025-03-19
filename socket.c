@@ -183,6 +183,8 @@ int wg_socket_send_skb_to_peer(struct wg_peer *peer, struct sk_buff *skb, u8 ds)
 		peer->tx_bytes += skb_len;
 	read_unlock_bh(&peer->endpoint_lock);
 
+	endtime_tx = ktime_get_ns();
+
 	return ret;
 }
 
@@ -317,7 +319,7 @@ static int wg_receive(struct sock *sk, struct sk_buff *skb)
 {
 	struct wg_device *wg;
 
-	starttime = ktime_get_ns();
+	starttime_rx = ktime_get_ns();
 
 	if (unlikely(!sk))
 		goto err;

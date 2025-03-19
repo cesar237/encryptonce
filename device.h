@@ -18,8 +18,10 @@
 #include <linux/net.h>
 #include <linux/ptr_ring.h>
 
-extern u64 starttime;
-extern u64 endtime;
+extern u64 starttime_rx;
+extern u64 endtime_rx;
+extern u64 starttime_tx;
+extern u64 endtime_tx;
 
 struct wg_device;
 
