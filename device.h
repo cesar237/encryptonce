@@ -18,6 +18,9 @@
 #include <linux/net.h>
 #include <linux/ptr_ring.h>
 
+extern u64 starttime;
+extern u64 endtime;
+
 struct wg_device;
 
 struct multicore_worker {

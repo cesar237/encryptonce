@@ -17,6 +17,9 @@
 #include <linux/genetlink.h>
 #include <net/rtnetlink.h>
 
+u64 starttime;
+u64 endtime;
+
 static int __init wg_mod_init(void)
 {
 	int ret;
@@ -62,6 +65,7 @@ err_allowedips:
 
 static void __exit wg_mod_exit(void)
 {
+	pr_info("%llu\n", endtime - starttime);
 	wg_genetlink_uninit();
 	wg_device_uninit();
 	wg_peer_uninit();
