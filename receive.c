@@ -487,6 +487,7 @@ next:
 	if (work_done < budget)
 		napi_complete_done(napi, work_done);
 
+	pr_info("Exit Point: %llu\n", ktime_get_ns());
 	return work_done;
 }
 
