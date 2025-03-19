@@ -484,10 +484,9 @@ next:
 			break;
 	}
 
+	pr_info(",%llu\n", ktime_get_ns());
 	if (work_done < budget)
 		napi_complete_done(napi, work_done);
-
-	pr_info(",%llu\n", ktime_get_ns());
 	return work_done;
 }
 
