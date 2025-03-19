@@ -317,7 +317,7 @@ static int wg_receive(struct sock *sk, struct sk_buff *skb)
 {
 	struct wg_device *wg;
 
-	pr_info("Entry Point: %llu\n", ktime_get_ns());
+	pr_info("%llu\n", ktime_get_ns());
 
 	if (unlikely(!sk))
 		goto err;
