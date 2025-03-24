@@ -170,7 +170,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	int inner_header_offset;
 
 	// TCP/IP header len here...
-	unsigned int total_headers_len = 120;
+	unsigned int total_headers_len = 40;
 
 	/* Ports corresponding to service on which partial encryption applies */
 	unsigned short partial_encrypt_ports[2];
@@ -205,13 +205,13 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	*/
 	// Get destination port of transport protocol
 
-	print_hex_dump(KERN_INFO, "encrypt_packet...", DUMP_PREFIX_OFFSET,
-		16, 1, skb->data, skb->len, true);
+	// print_hex_dump(KERN_INFO, "encrypt_packet...", DUMP_PREFIX_OFFSET,
+	// 	16, 1, skb->data, skb->len, true);
 
 	if (is_partial_encrypt_service && 
 			skb->len + padding_len > total_headers_len) {
 		/* Do partial encryption */
-		pr_info("partial encrypt\n");
+		// pr_info("partial encrypt\n");
 
 		/* Calculate Trailer Length */
 		trailer_len = padding_len;
@@ -283,8 +283,8 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		/* Free our temporary buffer */
 		kfree(headers_buf);
 	
-		print_hex_dump(KERN_INFO, "partial encrypt_packet done!", DUMP_PREFIX_OFFSET,
-			16, 1, skb->data, skb->len, true);
+		// print_hex_dump(KERN_INFO, "partial encrypt_packet done!", DUMP_PREFIX_OFFSET,
+		// 	16, 1, skb->data, skb->len, true);
 		return true;
 	err:
 		kfree(headers_buf);
@@ -292,7 +292,7 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 	}
 	else {
 		/* Do Total encryption */
-		pr_info("total encrypt\n");
+		// pr_info("total encrypt\n");
 
 		/* Calculate Trailer Length */
 		// trailer_len = padding_len;
@@ -338,8 +338,8 @@ static bool encrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		bool ret = chacha20poly1305_encrypt_sg_inplace(sg, plaintext_len, NULL, 0,
 							PACKET_CB(skb)->nonce,
 							keypair->sending.key);
-		print_hex_dump(KERN_INFO, "total encrypt_packet done!", DUMP_PREFIX_OFFSET,
-					16, 1, skb->data, skb->len, true);
+		// print_hex_dump(KERN_INFO, "total encrypt_packet done!", DUMP_PREFIX_OFFSET,
+		// 			16, 1, skb->data, skb->len, true);
 		return ret;
 	}
 }

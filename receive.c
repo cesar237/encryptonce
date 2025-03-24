@@ -247,7 +247,7 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 {
 	struct scatterlist sg[MAX_SKB_FRAGS + 8];
 	struct sk_buff *trailer;
-	unsigned int offset, iph_len = 120; // Only TCP/IP header accounted
+	unsigned int offset, iph_len = 40; // Only TCP/IP header accounted
 	int num_frags;
 	bool partial_encryption = false;
 
@@ -261,8 +261,8 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		return false;
 	}
 
-	print_hex_dump(KERN_INFO, "decrypt_packet", DUMP_PREFIX_OFFSET,
-		16, 1, skb->data, skb->len, true);
+	// print_hex_dump(KERN_INFO, "decrypt_packet", DUMP_PREFIX_OFFSET,
+	// 	16, 1, skb->data, skb->len, true);
 
 	PACKET_CB(skb)->nonce =
 		le64_to_cpu(((struct message_data *)skb->data)->counter);
@@ -272,7 +272,7 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		partial_encryption = true;
 
 	if (partial_encryption) {
-		pr_info("partial decrypt\n");
+		// pr_info("partial decrypt\n");
 
 		/* Allocate buffer for headers */
 		u8 *encrypted_hdr = kmalloc(noise_encrypted_len(iph_len), GFP_ATOMIC);
@@ -311,8 +311,8 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 			goto err;
 		skb_pull(skb, offset);
 
-		print_hex_dump(KERN_INFO, "partial decrypt_packet done!", DUMP_PREFIX_OFFSET,
-			16, 1, skb->data, skb->len, true);
+		// print_hex_dump(KERN_INFO, "partial decrypt_packet done!", DUMP_PREFIX_OFFSET,
+		// 	16, 1, skb->data, skb->len, true);
 	
 		return true;
 	
@@ -321,7 +321,7 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 		return false;
 	}
 	else { // TOTAL encryption
-		pr_info("total decrypt\n");
+		// pr_info("total decrypt\n");
 
 		/* We ensure that the network header is part of the packet before we
 		* call skb_cow_data, so that there's no chance that data is removed
@@ -352,8 +352,8 @@ static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 			return false;
 		skb_pull(skb, offset);
 
-		print_hex_dump(KERN_INFO, "total decrypt_packet done!", DUMP_PREFIX_OFFSET,
-			16, 1, skb->data, skb->len, true);
+		// print_hex_dump(KERN_INFO, "total decrypt_packet done!", DUMP_PREFIX_OFFSET,
+			// 16, 1, skb->data, skb->len, true);
 
 		return true;
 	}
