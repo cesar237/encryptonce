@@ -245,118 +245,65 @@ static void keep_key_fresh(struct wg_peer *peer)
 
 static bool decrypt_packet(struct sk_buff *skb, struct noise_keypair *keypair)
 {
-	struct scatterlist sg[MAX_SKB_FRAGS + 8];
 	struct sk_buff *trailer;
-	unsigned int offset, iph_len = 40; // Only TCP/IP header accounted
+	unsigned int offset, iph_len = 20; // Only TCP/IP header accounted
 	int num_frags;
-	bool partial_encryption = false;
+
+	/* Allocate buffer for headers */
+    u8 *encrypted_hdr = kmalloc(noise_encrypted_len(iph_len), GFP_ATOMIC);
+	if (!encrypted_hdr)
+		return false;
 
 	if (unlikely(!keypair))
-			return false;
+		goto err;
 
 	if (unlikely(!READ_ONCE(keypair->receiving.is_valid) ||
-		wg_birthdate_has_expired(keypair->receiving.birthdate, REJECT_AFTER_TIME) ||
-		keypair->receiving_counter.counter >= REJECT_AFTER_MESSAGES)) {
+		  wg_birthdate_has_expired(keypair->receiving.birthdate, REJECT_AFTER_TIME) ||
+		  keypair->receiving_counter.counter >= REJECT_AFTER_MESSAGES)) {
 		WRITE_ONCE(keypair->receiving.is_valid, false);
-		return false;
+		goto err;
 	}
-
-	// print_hex_dump(KERN_INFO, "decrypt_packet", DUMP_PREFIX_OFFSET,
-	// 	16, 1, skb->data, skb->len, true);
 
 	PACKET_CB(skb)->nonce =
 		le64_to_cpu(((struct message_data *)skb->data)->counter);
 
-	// Check if encryption is partial or not
-	if (SKB_TYPE_LE32(skb) == cpu_to_le32(MESSAGE_DATA_PARTIAL))
-		partial_encryption = true;
+	/* We ensure that the network header is part of the packet before we
+	 * call skb_cow_data, so that there's no chance that data is removed
+	 * from the skb, so that later we can extract the original endpoint.
+	 */
+	offset = skb->data - skb_network_header(skb);
+	skb_push(skb, offset);
+	num_frags = skb_cow_data(skb, 0, &trailer);
+	offset += sizeof(struct message_data);
+	skb_pull(skb, offset);
 
-	if (partial_encryption) {
-		// pr_info("partial decrypt\n");
+	/* Copy encrypted header to our buffer */
+    skb_copy_bits(skb, 0, encrypted_hdr, noise_encrypted_len(iph_len));
 
-		/* Allocate buffer for headers */
-		u8 *encrypted_hdr = kmalloc(noise_encrypted_len(iph_len), GFP_ATOMIC);
-		if (!encrypted_hdr)
-			return false;
-	
-		/* We ensure that the network header is part of the packet before we
-		 * call skb_cow_data, so that there's no chance that data is removed
-		 * from the skb, so that later we can extract the original endpoint.
-		 */
-		offset = skb->data - skb_network_header(skb);
-		skb_push(skb, offset);
-		num_frags = skb_cow_data(skb, 0, &trailer);
-		offset += sizeof(struct message_data);
-		skb_pull(skb, offset);
-	
-		/* Copy encrypted header to our buffer */
-		skb_copy_bits(skb, 0, encrypted_hdr, noise_encrypted_len(iph_len));
-	
-		if (!chacha20poly1305_decrypt(encrypted_hdr, encrypted_hdr, noise_encrypted_len(iph_len),
-									 NULL, 0, PACKET_CB(skb)->nonce,
-									 keypair->receiving.key))
-			goto err;
-	
-		/* remove auth tag space */
-		skb_pull(skb, noise_encrypted_len(0));
-	
-		/* Store the decrypted header back to skb */
-		skb_store_bits(skb, 0, encrypted_hdr, iph_len);
-	
-		/* Another ugly situation of pushing and pulling the header so as to
-		 * keep endpoint information intact.
-		 */
-		skb_push(skb, offset);
-		if (pskb_trim(skb, skb->len))
-			goto err;
-		skb_pull(skb, offset);
+	if (!chacha20poly1305_decrypt(encrypted_hdr, encrypted_hdr, noise_encrypted_len(iph_len),
+                                 NULL, 0, PACKET_CB(skb)->nonce,
+                                 keypair->receiving.key))
+		goto err;
 
-		// print_hex_dump(KERN_INFO, "partial decrypt_packet done!", DUMP_PREFIX_OFFSET,
-		// 	16, 1, skb->data, skb->len, true);
-	
-		return true;
-	
-	err:
-		kfree(encrypted_hdr);
-		return false;
-	}
-	else { // TOTAL encryption
-		// pr_info("total decrypt\n");
+	/* remove auth tag space */
+	skb_pull(skb, noise_encrypted_len(0));
 
-		/* We ensure that the network header is part of the packet before we
-		* call skb_cow_data, so that there's no chance that data is removed
-		* from the skb, so that later we can extract the original endpoint.
-		*/
-		offset = skb->data - skb_network_header(skb);
-		skb_push(skb, offset);
-		num_frags = skb_cow_data(skb, 0, &trailer);
-		offset += sizeof(struct message_data);
-		skb_pull(skb, offset);
-		if (unlikely(num_frags < 0 || num_frags > ARRAY_SIZE(sg)))
-			return false;
+	/* Store the decrypted header back to skb */
+	skb_store_bits(skb, 0, encrypted_hdr, iph_len);
 
-		sg_init_table(sg, num_frags);
-		if (skb_to_sgvec(skb, sg, 0, skb->len) <= 0)
-			return false;
+	/* Another ugly situation of pushing and pulling the header so as to
+	 * keep endpoint information intact.
+	 */
+	skb_push(skb, offset);
+	if (pskb_trim(skb, skb->len))
+		goto err;
+	skb_pull(skb, offset);
 
-		if (!chacha20poly1305_decrypt_sg_inplace(sg, skb->len, NULL, 0,
-								PACKET_CB(skb)->nonce,
-							keypair->receiving.key))
-			return false;
+	return true;
 
-		/* Another ugly situation of pushing and pulling the header so as to
-		* keep endpoint information intact.
-		*/
-		skb_push(skb, offset);
-		if (pskb_trim(skb, skb->len - noise_encrypted_len(0)))
-			return false;
-		skb_pull(skb, offset);
-
-		// print_hex_dump(KERN_INFO, "total decrypt_packet done!", DUMP_PREFIX_OFFSET,
-			// 16, 1, skb->data, skb->len, true);
-
-		return true;
-	}
+err:
+	kfree(encrypted_hdr);
+	return false;
 }
 
 /* This is RFC6479, a replay detection bitmap algorithm that avoids bitshifts */
