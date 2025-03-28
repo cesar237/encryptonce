@@ -530,6 +530,7 @@ static void wg_packet_consume_data(struct wg_device *wg, struct sk_buff *skb)
 		likely(decrypt_packet(skb, PACKET_CB(skb)->keypair)) ?
 			PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
 	wg_queue_enqueue_per_peer_rx(skb, state);
+	trace_printk("dequeue queue=-1 size=0 work_done=1\n");
 
 	// ret = wg_queue_enqueue_per_device_and_peer(&wg->decrypt_queue, &peer->rx_queue, skb,
 	// 					   wg->packet_crypt_wq, &wg->decrypt_queue.last_cpu);
