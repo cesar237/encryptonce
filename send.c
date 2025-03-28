@@ -314,7 +314,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 			if (need_resched())
 				cond_resched();
 		}
-		trace_printk("enqueue queue=%d size=%d work_done=%d\n", cpu, atomic_read(&queue->size[0]), work_done);
+		trace_printk("enqueue queue=%d size=%d work_done=%d\n", cpu, atomic_read(&queue->size[cpu]), work_done);
 	}
 	else {
 		// Batching mode
@@ -337,7 +337,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 			}
 			wg_queue_enqueue_per_peer_tx(first, state);
 		}
-		trace_printk("enqueue queue=%d size=%d work_done=%d\n", cpu, atomic_read(&queue->size[0]), got);
+		trace_printk("enqueue queue=%d size=%d work_done=%d\n", cpu, atomic_read(&queue->size[cpu]), got);
 	}
 }
 
