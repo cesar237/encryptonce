@@ -289,8 +289,10 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 	struct crypt_queue *queue = container_of(work, struct multicore_worker,
 						 work)->ptr;
 	struct sk_buff *first, *skb, *next;
+	int work_done = 0;
 
 	while ((first = ptr_ring_consume_bh(&queue->ring)) != NULL) {
+		atomic_dec(&queue->size);
 		enum packet_state state = PACKET_STATE_CRYPTED;
 
 		skb_list_walk_safe(first, skb, next) {
@@ -302,10 +304,12 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 				break;
 			}
 		}
+		work_done++;
 		wg_queue_enqueue_per_peer_tx(first, state);
 		if (need_resched())
 			cond_resched();
 	}
+	trace_printk("queue=%p size=%d work_done=%d\n", queue, atomic_read(&queue->size), work_done);
 }
 
 static void wg_packet_create_data(struct wg_peer *peer, struct sk_buff *first)

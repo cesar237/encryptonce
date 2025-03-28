@@ -349,6 +349,8 @@ static int wg_newlink(struct net *src_net, struct net_device *dev,
 	if (!wg->packet_crypt_wq)
 		goto err_destroy_handshake_send;
 
+	pr_info("encrypt_queue=%p decrypt_queue=%p\n", &wg->encrypt_queue, &wg->decrypt_queue);
+
 	ret = wg_packet_queue_init(&wg->encrypt_queue, wg_packet_encrypt_worker,
 				   MAX_QUEUED_PACKETS);
 	if (ret < 0)

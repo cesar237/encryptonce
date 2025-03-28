@@ -28,6 +28,7 @@ struct multicore_worker {
 struct crypt_queue {
 	struct ptr_ring ring;
 	struct multicore_worker __percpu *worker;
+	atomic_t size;
 	int last_cpu;
 };
 

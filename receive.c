@@ -495,15 +495,19 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 	struct crypt_queue *queue = container_of(work, struct multicore_worker,
 						 work)->ptr;
 	struct sk_buff *skb;
+	int work_done=0;
 
 	while ((skb = ptr_ring_consume_bh(&queue->ring)) != NULL) {
+		atomic_dec(&queue->size);
 		enum packet_state state =
 			likely(decrypt_packet(skb, PACKET_CB(skb)->keypair)) ?
 				PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
 		wg_queue_enqueue_per_peer_rx(skb, state);
+		work_done++;
 		if (need_resched())
 			cond_resched();
 	}
+	trace_printk("queue=%p size=%d work_done=%d\n", queue, atomic_read(&queue->size), work_done);
 }
 
 static void wg_packet_consume_data(struct wg_device *wg, struct sk_buff *skb)
