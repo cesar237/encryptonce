@@ -33,6 +33,7 @@ int wg_packet_queue_init(struct crypt_queue *queue, work_func_t function,
 		ret = ptr_ring_init(&queue->ring[i], len, GFP_KERNEL);
 		if (ret)
 			return ret;
+		atomic_set(&queue->size[i], 0);
 	}
 	
 	queue->worker = wg_packet_percpu_multicore_worker_alloc(function, queue);

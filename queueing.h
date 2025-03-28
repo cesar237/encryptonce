@@ -178,6 +178,7 @@ static inline int wg_queue_enqueue_per_device_and_peer(
 	// pr_info("wg_receive choosen_cpu=%d\n", cpu);
 	if (unlikely(ptr_ring_produce_bh(&device_queue->ring[cpu % wg_nr_rings], skb)))
 		return -EPIPE;
+	atomic_add_unless(&device_queue->size[cpu % wg_nr_rings], 1, MAX_QUEUED_PACKETS);
 	queue_work_on(cpu, wq, &per_cpu_ptr(device_queue->worker, cpu)->work);
 	return 0;
 }
