@@ -309,7 +309,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 		if (need_resched())
 			cond_resched();
 	}
-	trace_printk("enqueue queue=%p size=%d work_done=%d\n", queue, atomic_read(&queue->size), work_done);
+	trace_printk("encrypt queue=%p size=%d work_done=%d\n", queue, atomic_read(&queue->size), work_done);
 }
 
 static void wg_packet_create_data(struct wg_peer *peer, struct sk_buff *first)
