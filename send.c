@@ -295,7 +295,9 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 
 	if (wg_batch_size == 1) {
 		// Normal polling mode
+		int work_done = 0;
 		while ((first = ptr_ring_consume_bh(&queue->ring[cpu % wg_nr_rings])) != NULL) {
+			atomic_dec(&queue->size[0]);
 			enum packet_state state = PACKET_STATE_CRYPTED;
 	
 			skb_list_walk_safe(first, skb, next) {
@@ -307,10 +309,12 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 					break;
 				}
 			}
+			work_done++;
 			wg_queue_enqueue_per_peer_tx(first, state);
 			if (need_resched())
 				cond_resched();
 		}
+		trace_printk("queue=%p size=%d work_done=%d\n", queue, atomic_read(&queue->size[0]), work_done);
 	}
 	else {
 		// Batching mode
@@ -320,7 +324,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 		got = ptr_ring_consume_batched_bh(&queue->ring[cpu % wg_nr_rings], (void **)skb_array, wg_batch_size);
 		for (int i = 0; i < got; i++) {
 			enum packet_state state = PACKET_STATE_CRYPTED;
-
+			atomic_dec(&queue->size[0]);
 			first = skb_array[i];
 			skb_list_walk_safe(first, skb, next) {
 				if (likely(encrypt_packet(skb,
@@ -333,6 +337,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 			}
 			wg_queue_enqueue_per_peer_tx(first, state);
 		}
+		trace_printk("queue=%p size=%d work_done=%d\n", queue, atomic_read(&queue->size[0]), got);S
 	}
 }
 

@@ -42,8 +42,9 @@ MODULE_PARM_DESC(wg_nr_rings, "Number of ring buffers");
 #endif
 
 struct crypt_queue {
-	struct ptr_ring ring[NR_RINGS];
+	struct ptr_ring ring[1];
 	struct multicore_worker __percpu *worker;
+	atomic_t size[1];
 	int last_cpu;
 };
 
