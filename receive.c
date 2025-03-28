@@ -511,7 +511,7 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 			if (need_resched())
 				cond_resched();
 		}
-		trace_printk("dequeue queue=%d size=%d work_done=%d\n", cpu, atomic_read(&queue->size[cpu]), work_done);
+		trace_printk("decrypt queue=%d size=%d work_done=%d\n", cpu, atomic_read(&queue->size[cpu]), work_done);
 	}
 	else {
 		// Batching mode
@@ -528,7 +528,7 @@ void wg_packet_decrypt_worker(struct work_struct *work)
 					PACKET_STATE_CRYPTED : PACKET_STATE_DEAD;
 			wg_queue_enqueue_per_peer_rx(skb, state);
 		}
-		trace_printk("dequeue queue=%d size=%d work_done=%d\n", cpu, atomic_read(&queue->size[cpu]), got);
+		trace_printk("decrypt queue=%d size=%d work_done=%d\n", cpu, atomic_read(&queue->size[cpu]), got);
 	}
 }
 
