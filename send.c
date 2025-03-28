@@ -337,7 +337,7 @@ void wg_packet_encrypt_worker(struct work_struct *work)
 			}
 			wg_queue_enqueue_per_peer_tx(first, state);
 		}
-		trace_printk("queue=%p size=%d work_done=%d\n", queue, atomic_read(&queue->size[0]), got);S
+		trace_printk("queue=%p size=%d work_done=%d\n", queue, atomic_read(&queue->size[0]), got);
 	}
 }
 
