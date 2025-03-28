@@ -339,7 +339,7 @@ static void wg_packet_create_data(struct wg_peer *peer, struct sk_buff *first)
 		}
 	}
 	wg_queue_enqueue_per_peer_tx(first, state);
-	trace_printk("enqueue queue=-1 size=0 work_done=1\n");
+	trace_printk("encrypt queue=-1 size=0 work_done=1\n");
 
 	ret = 0;
 	// ret = wg_queue_enqueue_per_device_and_peer(&wg->encrypt_queue, &peer->tx_queue, first,
